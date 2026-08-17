@@ -5,8 +5,21 @@ Command-line interface for GUN-101-TPM.
 import argparse
 import sys
 import os
+import getpass
 from .handler import encrypt_file, decrypt_file
 from .tpm import check_tpm_available, get_tpm_fingerprint
+
+
+def get_password() -> str:
+    """Get password from env var or interactive prompt."""
+    password = os.environ.get("GUN101TPM_PASSWORD")
+    if not password:
+        password = getpass.getpass("Password: ")
+    if os.environ.get("GUN101TPM_PASSWORD") and password == os.environ["GUN101TPM_PASSWORD"]:
+        print("WARNING: Using password from environment variable. "
+              "This is less secure — password may appear in shell history or process listing.")
+    return password
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -83,9 +96,12 @@ def main():
             print(f"Error reading file: {e}")
             sys.exit(1)
 
+        # Prompt for password
+        password = get_password()
+
         # Encrypt
         try:
-            encrypted = encrypt_file(data)
+            encrypted = encrypt_file(data, password)
         except Exception as e:
             print(f"Error during encryption: {e}")
             sys.exit(1)
@@ -129,9 +145,12 @@ def main():
             print(f"Error reading file: {e}")
             sys.exit(1)
 
+        # Prompt for password
+        password = get_password()
+
         # Decrypt
         try:
-            decrypted = decrypt_file(data)
+            decrypted = decrypt_file(data, password)
         except Exception as e:
             print(f"Error during decryption: {e}")
             sys.exit(1)
@@ -148,6 +167,7 @@ def main():
     else:
         parser.print_help()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

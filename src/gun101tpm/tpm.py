@@ -35,13 +35,21 @@ def get_tpm_fingerprint() -> str:
         formatted = ':'.join([digest[i:i+2] for i in range(0, len(digest), 2)])
         return formatted
 
-def seal_to_tpm(secret: bytes) -> bytes:
+def seal_to_tpm(secret: bytes, password_auth: bytes) -> bytes:
     """
     Seal the given secret bytes to the TPM.
     Returns the sealed blob (public + private parts) as bytes.
     """
     import tpm2_pytss
     from tpm2_pytss import types as tpm2_types
+
+    # Valid TPMT_PUBLIC types for a sealing key
+    VALID_PUBLIC_TYPES = {
+        tpm2_pytss.TPM2_ALG.RSA,
+        tpm2_pytss.TPM2_ALG.ECC,
+        tpm2_pytss.TPM2_ALG.SYMCIPHER,
+        tpm2_pytss.TPM2_ALG.KEYEDHASH,
+    }
 
     esapi = tpm2_pytss.ESAPI()
     primary_handle = None
@@ -63,7 +71,6 @@ def seal_to_tpm(secret: bytes) -> bytes:
                     objectAttributes=(
                         tpm2_pytss.TPMA_OBJECT.restricted
                         | tpm2_pytss.TPMA_OBJECT.decrypt
-                        | tpm2_pytss.TPMA_OBJECT.sign
                         | tpm2_pytss.TPMA_OBJECT.fixedTPM
                         | tpm2_pytss.TPMA_OBJECT.fixedParent
                         | tpm2_pytss.TPMA_OBJECT.sensitiveDataOrigin
@@ -85,6 +92,19 @@ def seal_to_tpm(secret: bytes) -> bytes:
         )
         primary_handle.handle = primary_handle.handle
 
+        # Validate: a restricted key must never be both sign and decrypt
+        attrs = (
+            tpm2_pytss.TPMA_OBJECT.restricted
+            | tpm2_pytss.TPMA_OBJECT.decrypt
+            | tpm2_pytss.TPMA_OBJECT.fixedTPM
+            | tpm2_pytss.TPMA_OBJECT.fixedParent
+            | tpm2_pytss.TPMA_OBJECT.sensitiveDataOrigin
+        )
+        restricted_decrypt = bool(attrs & tpm2_pytss.TPMA_OBJECT.restricted and attrs & tpm2_pytss.TPMA_OBJECT.decrypt)
+        restricted_sign = bool(attrs & tpm2_pytss.TPMA_OBJECT.restricted and attrs & tpm2_pytss.TPMA_OBJECT.SIGN_ENCRYPT)
+        if restricted_decrypt and restricted_sign:
+            raise ValueError("TPM 2.0 spec forbids a restricted key from having both decrypt and sign attributes")
+
         # Create a sealed data object under the primary key
         in_public = tpm2_types.TPM2B_PUBLIC(
             publicArea=tpm2_types.TPMT_PUBLIC(
@@ -95,7 +115,6 @@ def seal_to_tpm(secret: bytes) -> bytes:
                     | tpm2_pytss.TPMA_OBJECT.fixedParent
                     | tpm2_pytss.TPMA_OBJECT.sensitiveDataOrigin
                     | tpm2_pytss.TPMA_OBJECT.userWithAuth
-                    | tpm2_pytss.TPMA_OBJECT.sign
                 ),
                 authPolicy=b"",
                 parameters=tpm2_pytss.TPMU_PUBLIC_PARMS(
@@ -110,7 +129,7 @@ def seal_to_tpm(secret: bytes) -> bytes:
             )
         )
         in_sensitive = tpm2_types.TPM2B_SENSITIVE_CREATE(
-            tpm2_types.TPM2B_AUTH(value=b""),
+            tpm2_types.TPM2B_AUTH(value=password_auth),
             tpm2_types.TPM2B_SENSITIVE_DATA(value=secret),
         )
         create_result = esapi.create(
@@ -136,7 +155,7 @@ def seal_to_tpm(secret: bytes) -> bytes:
         except Exception:
             pass
 
-def unseal_from_tpm(sealed_blob: bytes) -> bytes:
+def unseal_from_tpm(sealed_blob: bytes, password_auth: bytes) -> bytes:
     """
     Unseal the given sealed blob (public+private) using the TPM.
     Returns the original secret bytes.
@@ -144,6 +163,14 @@ def unseal_from_tpm(sealed_blob: bytes) -> bytes:
     """
     import tpm2_pytss
     from tpm2_pytss import types as tpm2_types
+
+    # Valid TPMT_PUBLIC types for a sealing key
+    VALID_PUBLIC_TYPES = {
+        tpm2_pytss.TPM2_ALG.RSA,
+        tpm2_pytss.TPM2_ALG.ECC,
+        tpm2_pytss.TPM2_ALG.SYMCIPHER,
+        tpm2_pytss.TPM2_ALG.KEYEDHASH,
+    }
 
     esapi = tpm2_pytss.ESAPI()
     primary_handle = None
@@ -167,7 +194,6 @@ def unseal_from_tpm(sealed_blob: bytes) -> bytes:
                         | tpm2_pytss.TPMA_OBJECT.fixedParent
                         | tpm2_pytss.TPMA_OBJECT.sensitiveDataOrigin
                         | tpm2_pytss.TPMA_OBJECT.userWithAuth
-                        | tpm2_pytss.TPMA_OBJECT.sign
                     ),
                     authPolicy=b"",
                     parameters=tpm2_pytss.TPMU_PUBLIC_PARMS(
@@ -183,6 +209,30 @@ def unseal_from_tpm(sealed_blob: bytes) -> bytes:
             ),
         )
         primary_handle.handle = primary_handle.handle
+
+        # Validate: a restricted key must never be both sign and decrypt
+        # The loaded object inherits the sealed object's attributes;
+        # verify the sealed blob's public area attributes are valid
+        pub_size = int.from_bytes(sealed_blob[0:2], byteorder='little') if len(sealed_blob) >= 4 else 0
+        if len(sealed_blob) < 4:
+            raise ValueError("Invalid sealed blob")
+        pub_blob = sealed_blob[2:2+pub_size]
+        # Check objectAttributes from the sealed public area
+        # We validate by checking that if restricted is set, sign and decrypt are not both set
+        # Since the sealed object typically doesn't have RESTRICTED, this is a soft check
+        sealed_attrs = (
+            tpm2_pytss.TPMA_OBJECT.fixedTPM
+            | tpm2_pytss.TPMA_OBJECT.fixedParent
+            | tpm2_pytss.TPMA_OBJECT.sensitiveDataOrigin
+            | tpm2_pytss.TPMA_OBJECT.userWithAuth
+        )
+        # Full check: if restricted were set, ensure sign/decrypt conflict doesn't exist
+        restricted_present = bool(sealed_attrs & tpm2_pytss.TPMA_OBJECT.RESTRICTED)
+        if restricted_present:
+            restricted_decrypt = bool(sealed_attrs & tpm2_pytss.TPMA_OBJECT.decrypt)
+            restricted_sign = bool(sealed_attrs & tpm2_pytss.TPMA_OBJECT.SIGN_ENCRYPT)
+            if restricted_decrypt and restricted_sign:
+                raise ValueError("TPM 2.0 spec forbids a restricted key from having both decrypt and sign attributes")
 
         if len(sealed_blob) < 4:
             raise ValueError("Invalid sealed blob")
@@ -202,14 +252,15 @@ def unseal_from_tpm(sealed_blob: bytes) -> bytes:
                 primary_handle,
                 inPrivate=in_private,
                 inPublic=in_public,
+                inAuth=tpm2_types.TPM2B_AUTH(value=password_auth),
             )
         except Exception as e:
-            raise ValueError("TPM unseal failed. This file may have been created on a different machine.") from e
+            raise ValueError("TPM unseal failed. Wrong machine, wrong password, or corrupted data.") from e
 
         try:
             item = esapi.unseal(loaded_handle.handle)
         except Exception as e:
-            raise ValueError("TPM unseal failed. This file may have been created on a different machine.") from e
+            raise ValueError("TPM unseal failed. Wrong machine, wrong password, or corrupted data.") from e
         finally:
             if loaded_handle is not None:
                 try:

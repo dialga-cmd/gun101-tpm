@@ -1,6 +1,7 @@
 """
 Key Derivation Function using Argon2id for GUN-101-TPM.
 """
+import hmac
 import argon2
 from .config import ARGON2_TIME_COST, ARGON2_MEMORY_COST, ARGON2_PARALLELISM, SALT_LEN
 
@@ -24,7 +25,7 @@ def derive_key(password: str, salt: bytes) -> bytes:
         parallelism=ARGON2_PARALLELISM,
         hash_len=32,  # 256-bit key
         salt_len=SALT_LEN,
-        type=argon2.argon2.ID  # Argon2id
+        type=argon2.Type.ID  # Argon2id
     )
 
     # Argon2 expects the password as bytes
@@ -56,7 +57,7 @@ def derive_key(password: str, salt: bytes) -> bytes:
             parallelism=ARGON2_PARALLELISM,
             hash_len=32,
             salt_len=SALT_LEN,
-            type=argon2.argon2.ID
+            type=argon2.Type.ID
         )
         hash_result2 = hasher2.hash(password_bytes, salt=salt)
         hash_b64_2 = hash_result2.split('$')[-1]
@@ -66,7 +67,6 @@ def derive_key(password: str, salt: bytes) -> bytes:
         key = base64.b64decode(hash_b64_2)
 
     return key
-
 def verify_key(password: str, salt: bytes, expected_key: bytes) -> bool:
     """
     Verify that a password derives to the expected key.
@@ -82,18 +82,15 @@ def verify_key(password: str, salt: bytes, expected_key: bytes) -> bool:
     try:
         derived_key = derive_key(password, salt)
         # Constant-time comparison to avoid timing attacks
-        return _constant_time_compare(derived_key, expected_key)
+        return hmac.compare_digest(derived_key, expected_key)
     except Exception:
         return False
 
+
 def _constant_time_compare(a: bytes, b: bytes) -> bool:
     """
-    Constant-time comparison to avoid timing attacks.
+    DEPRECATED: Use hmac.compare_digest() instead.
+    This function is kept for backward compatibility but has been
+    replaced by hmac.compare_digest() in the verify_key() function.
     """
-    if len(a) != len(b):
-        return False
-
-    result = 0
-    for x, y in zip(a, b):
-        result |= x ^ y
-    return result == 0
+    return hmac.compare_digest(a, b)

@@ -11,19 +11,16 @@ is sealed inside the Trusted Platform Module (TPM 2.0) hardware.
 - **No recovery**: If your machine's TPM fails or you lose the machine, **you cannot recover your files**.
   Do not use this mode for files that require portability or long-term archival without backup.
 - **Not quantum-resistant**: AES-256 provides ~128-bit post-quantum security; TPM sealing varies by vendor.
-- **TPM 2. 2.0 chip and proper drivers are
-How
+- **TPM 2.0 chip and proper drivers are required.**
 
-1. A random datapackey (DEK) is generated for each file.
-2. The DEK is encrypted with a Key Encryption the KEK derived from your password via Argon2id.
+1. A random data encryption key (DEK) is generated for each file.
+2. The DEK is encrypted with a Key Encryption Key (KEK) derived from your password via Argon2id.
 3. The encrypted DEK is sealed to the TPM using a symmetric key bound to the TPM.
 4. The file itself is encrypted with the DEK using AES-256-GCM.
 5. The TPM's Endorsement Key (EK) public area is hashed to form a fingerprint, stored in the container.
    During decryption, the fingerprint is checked first — if it doesn't match, the operation fails
    immediately without contacting the TPM.
 
-## 
-- Python 3.9+
 - TPM 2.0 chip
 - `tpm2-pytss` Python package (optional install)
 
