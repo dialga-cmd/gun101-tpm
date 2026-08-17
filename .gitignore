@@ -1,0 +1,4 @@
+.pytest_cache/
+venv/
+src/gun101_tpm.egg-info
+__pycache__/
