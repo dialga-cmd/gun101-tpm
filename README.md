@@ -1,5 +1,23 @@
 # GUN-101-TPM: Hardware-bound File Encryption
 
+## 🛡️ Platform Support
+
+**GUN-101-TPM is currently Linux-only.** TPM 2.0 hardware binding is not yet supported on Windows or macOS. This limitation is due to the tpm2-pytss library's reliance on Linux-specific kernel interfaces ( `/dev/tpm0`, `/dev/tpmrm0` ) and the kernel's TPM 2.0 device model.
+
+- **Linux**: Fully supported with `/dev/tpm0` or `/dev/tpmrm0`
+- **Windows**: Not supported — requires a native TBS-based backend (planned for future)
+- **macOS**: Not supported — most Mac hardware lacks TPM 2.0 chips; would require a Secure Enclave-based backend (planned for future)
+
+**Installation implications**:
+- `pip install gun101-tpm[tpm]` installs cleanly on any OS via the conditional dependency `tpm2-pytss>=2.3.0; sys_platform == 'linux'` in `pyproject.toml`
+- On non-Linux OS, the runtime check `_check_platform_supported()` in `tpm.py` raises a clear `RuntimeError` without importing `tpm2_pytss`
+- The non-TPM GUN-101 modes (password-only) work cross-platform
+
+---
+
+GUN-101-TPM creates encrypted files that can only be decrypted on the machine that created them.
+...
+
 GUN-101-TPM creates encrypted files that can only be decrypted on the machine that created them.
 Even with the correct password, decryption fails on any other machine because the encryption key
 is sealed inside the Trusted Platform Module (TPM 2.0) hardware.

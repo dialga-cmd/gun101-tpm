@@ -1,12 +1,16 @@
 # TPM 2.0 Setup Guide — GUN-101-TPM
 
-This guide explains how to set up a TPM 2.0 device for use with GUN-101-TPM.
+**Scope: Linux-only**
+
+This guide explains how to set up a TPM 2.0 device for use with GUN-101-TPM on Linux.
 
 ## Prerequisites
 
-- A TPM 2.0 hardware chip on your motherboard or a supported TPM simulator (swtpm)
+- A TPM 2.0 hardware chip on your motherboard
 - `tpm2-pytss` Python package installed
 - Python 3.9+
+
+...
 
 ## Enabling the TPM
 

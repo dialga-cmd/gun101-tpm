@@ -7,7 +7,7 @@ import sys
 import os
 import getpass
 from .handler import encrypt_file, decrypt_file
-from .tpm import check_tpm_available, get_tpm_fingerprint
+from .tpm import check_tpm_available, get_tpm_fingerprint, _check_platform_supported
 
 
 def get_password() -> str:
@@ -57,17 +57,17 @@ def main():
     args = parser.parse_args()
 
     if args.command == "check-tpm":
-        if check_tpm_available():
-            try:
-                fingerprint = get_tpm_fingerprint()
-                print(f"TPM 2.0 device found. Fingerprint: {fingerprint}")
-            except Exception as e:
-                print(f"Error reading TPM fingerprint: {e}")
-                sys.exit(1)
-        else:
-            print("TPM 2.0 device not found.")
-            print("Please ensure TPM 2.0 is available and tpm2-pytss is installed.")
-            print("See docs/TPM_SETUP.md for setup instructions.")
+        try:
+            _check_platform_supported()
+            if check_tpm_available():
+                try:
+                    fingerprint = get_tpm_fingerprint()
+                    print(f"TPM 2.0 device found. Fingerprint: {fingerprint}")
+                except Exception as e:
+                    print(f"Error reading TPM fingerprint: {e}")
+                    sys.exit(1)
+        except RuntimeError as e:
+            print(f"Error: {e}")
             sys.exit(1)
 
     elif args.command == "encrypt":
