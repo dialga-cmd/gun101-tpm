@@ -128,6 +128,7 @@ def seal_to_tpm(secret: bytes, password_auth: bytes) -> bytes:
                         | tpm2_pytss.TPMA_OBJECT.FIXEDTPM
                         | tpm2_pytss.TPMA_OBJECT.FIXEDPARENT
                         | tpm2_pytss.TPMA_OBJECT.SENSITIVEDATAORIGIN
+                        | tpm2_pytss.TPMA_OBJECT.USERWITHAUTH
                     ),
                     authPolicy=b"",
                     parameters=tpm2_types.TPMU_PUBLIC_PARMS(
@@ -150,7 +151,6 @@ def seal_to_tpm(secret: bytes, password_auth: bytes) -> bytes:
                 objectAttributes=(
                     tpm2_pytss.TPMA_OBJECT.FIXEDTPM
                     | tpm2_pytss.TPMA_OBJECT.FIXEDPARENT
-                    | tpm2_pytss.TPMA_OBJECT.SENSITIVEDATAORIGIN
                     | tpm2_pytss.TPMA_OBJECT.USERWITHAUTH
                 ),
                 authPolicy=b"",
