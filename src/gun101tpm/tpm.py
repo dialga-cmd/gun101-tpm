@@ -49,7 +49,7 @@ def _make_keyed_hash_public_params():
 
     # TPMT_KEYEDHASH_SCHEME: scheme + details
     kh_scheme = tpm2_types.TPMT_KEYEDHASH_SCHEME(
-        scheme=TPM2_ALG.XOR,
+        scheme=TPM2_ALG.NULL,
         details=tpm2_types.TPMU_SCHEME_KEYEDHASH(
             exclusiveOr=tpm2_types.TPMS_SCHEME_XOR(
                 hashAlg=TPM2_ALG.SHA256, kdf=TPM2_ALG.KDF1_SP800_108
@@ -120,14 +120,14 @@ def seal_to_tpm(secret: bytes, password_auth: bytes) -> bytes:
             ),
             in_public=tpm2_types.TPM2B_PUBLIC(
                 publicArea=tpm2_types.TPMT_PUBLIC(
-                    type=tpm2_pytss.TPM2_ALG.KEYEDHASH,
+                    type=tpm2_pytss.TPM2_ALG.SYMCIPHER,
                     nameAlg=tpm2_pytss.TPM2_ALG.SHA256,
                     objectAttributes=(
                         tpm2_pytss.TPMA_OBJECT.RESTRICTED
                         | tpm2_pytss.TPMA_OBJECT.DECRYPT
                         | tpm2_pytss.TPMA_OBJECT.FIXEDTPM
                         | tpm2_pytss.TPMA_OBJECT.FIXEDPARENT
-                        | tpm2_pytss.TPMA_OBJECT.SENSITIVEDATAORIGIN
+                        
                         | tpm2_pytss.TPMA_OBJECT.USERWITHAUTH
                     ),
                     authPolicy=b"",
@@ -146,18 +146,21 @@ def seal_to_tpm(secret: bytes, password_auth: bytes) -> bytes:
         # userWithAuth gates unseal behind the auth value (presented via tr_set_auth).
         in_public = tpm2_types.TPM2B_PUBLIC(
             publicArea=tpm2_types.TPMT_PUBLIC(
-                type=tpm2_pytss.TPM2_ALG.KEYEDHASH,
+                type=tpm2_pytss.TPM2_ALG.SYMCIPHER,
                 nameAlg=tpm2_pytss.TPM2_ALG.SHA256,
                 objectAttributes=(
                     tpm2_pytss.TPMA_OBJECT.FIXEDTPM
+                    | tpm2_pytss.TPMA_OBJECT.DECRYPT
                     | tpm2_pytss.TPMA_OBJECT.FIXEDPARENT
                     | tpm2_pytss.TPMA_OBJECT.USERWITHAUTH
                 ),
                 authPolicy=b"",
                 parameters=tpm2_types.TPMU_PUBLIC_PARMS(
-                    keyedHashDetail=_make_keyed_hash_public_params()
+                    symDetail=tpm2_types.TPMS_SYMCIPHER_PARMS(
+                        sym=tpm2_types.TPMT_SYM_DEF_OBJECT.parse('aes128cfb')
+                    ),
                 ),
-                unique=tpm2_types.TPMU_PUBLIC_ID(keyedHash=b""),
+                unique=tpm2_types.TPMU_PUBLIC_ID(sym=b""),
             )
         )
         in_sensitive = _make_tpm2b_sensitive_create(
@@ -215,12 +218,12 @@ def unseal_from_tpm(sealed_blob: bytes, password_auth: bytes) -> bytes:
             ),
             in_public=tpm2_types.TPM2B_PUBLIC(
                 publicArea=tpm2_types.TPMT_PUBLIC(
-                    type=tpm2_pytss.TPM2_ALG.KEYEDHASH,
+                    type=tpm2_pytss.TPM2_ALG.SYMCIPHER,
                     nameAlg=tpm2_pytss.TPM2_ALG.SHA256,
                     objectAttributes=(
                         tpm2_pytss.TPMA_OBJECT.FIXEDTPM
                         | tpm2_pytss.TPMA_OBJECT.FIXEDPARENT
-                        | tpm2_pytss.TPMA_OBJECT.SENSITIVEDATAORIGIN
+                        
                         | tpm2_pytss.TPMA_OBJECT.USERWITHAUTH
                     ),
                     authPolicy=b"",
