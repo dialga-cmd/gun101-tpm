@@ -37,7 +37,12 @@ def _make_keyed_hash_public_params():
     # TPMT_KEYEDHASH_SCHEME: scheme + details
     kh_scheme = tpm2_types.TPMT_KEYEDHASH_SCHEME(
         scheme=TPM2_ALG.XOR,
-    )
+        details=tpm2_types.TPMU_SCHEME_KEYEDHASH(
+            exclusiveOr=tpm2_types.TPMS_SCHEME_XOR(
+                hashAlg=TPM2_ALG.SHA256, kdf=TPM2_ALG.KDF1_SP800_108
+            )
+),
+        )
     # TPMS_KEYEDHASH_PARMS: scheme + details (union)
     kh_parms = tpm2_types.TPMS_KEYEDHASH_PARMS(
         scheme=kh_scheme,
@@ -117,7 +122,8 @@ def seal_to_tpm(secret: bytes, password_auth: bytes) -> bytes:
                 )
             ),
         )
-        primary_handle.handle = primary_handle.handle
+        # esapi.create_primary() returns a tuple: (ESYS_TR, TPM2B_PUBLIC, ...)
+        primary_handle = primary_handle[0]
 
         # Create a sealed data object under the primary key.
         # Object attributes: fixedTPM | fixedParent | sensitiveDataOrigin | userWithAuth
@@ -145,11 +151,12 @@ def seal_to_tpm(secret: bytes, password_auth: bytes) -> bytes:
         )
         create_result = esapi.create(
             primary_handle,
-            inSensitive=in_sensitive,
-            inPublic=in_public,
+            in_sensitive,
+            in_public,
         )
-        outside_priv = create_result.outPrivate
-        outside_pub = create_result.outPublic
+        # esapi.create() returns a tuple: (ESYS_TR, TPM2B_PUBLIC, TPM2B_CREATION_DATA, TPM2B_DIGEST, TPMT_TK_CREATION)
+        outside_priv = create_result[1]
+        outside_pub = create_result[2]
         esapi.flush_context(primary_handle)
         primary_handle = None  # Mark as flushed
 
@@ -208,7 +215,8 @@ def unseal_from_tpm(sealed_blob: bytes, password_auth: bytes) -> bytes:
                 )
             ),
         )
-        primary_handle.handle = primary_handle.handle
+        # esapi.create_primary() returns a tuple: (ESYS_TR, TPM2B_PUBLIC, TPM2B_CREATION_DATA, TPM2B_DIGEST, TPMT_TK_CREATION)
+        primary_handle = primary_handle[0]
 
         # Parse the sealed blob
         if len(sealed_blob) < 4:
@@ -228,8 +236,8 @@ def unseal_from_tpm(sealed_blob: bytes, password_auth: bytes) -> bytes:
         # TPM2_Load does NOT take an inAuth parameter; tr_set_auth gates the unseal.
         loaded_handle = esapi.load(
             primary_handle,
-            inPrivate=in_private,
-            inPublic=in_public,
+            in_private,
+            in_public,
         )
 
         # CRITICAL: Set the auth value on the loaded handle using tr_set_auth.
