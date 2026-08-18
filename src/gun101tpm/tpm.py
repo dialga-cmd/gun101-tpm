@@ -7,6 +7,44 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def _make_tpm2b_sensitive_create(auth, data):
+    """
+    Construct a TPM2B_SENSITIVE_CREATE with the given auth and data.
+
+    TPM2B_SENSITIVE_CREATE only accepts _cdata positionally plus keyword args.
+    We build it by creating the outer object and setting the inner sensitive fields.
+    """
+    import tpm2_pytss
+    from tpm2_pytss import types as tpm2_types
+
+    sens_create = tpm2_types.TPM2B_SENSITIVE_CREATE()
+    sens_inner = sens_create.sensitive
+    sens_inner.userAuth = auth
+    sens_inner.data = data
+    return sens_create
+
+
+def _make_keyed_hash_public_params():
+    """
+    Build the TPMS_KEYEDHASH_PARMS structure for a KEYEDHASH public area.
+    This is the correct type for the keyedHashDetail field of TPMU_PUBLIC_PARMS.
+    """
+    import tpm2_pytss
+    from tpm2_pytss import types as tpm2_types
+    from tpm2_pytss import TPM2_ALG
+
+    # TPMT_KEYEDHASH_SCHEME: scheme + details
+    kh_scheme = tpm2_types.TPMT_KEYEDHASH_SCHEME(
+        scheme=TPM2_ALG.XOR,
+    )
+    # TPMS_KEYEDHASH_PARMS: scheme + details (union)
+    kh_parms = tpm2_types.TPMS_KEYEDHASH_PARMS(
+        scheme=kh_scheme,
+    )
+    return kh_parms
+
+
 def check_tpm_available() -> bool:
     """
     Check if a TPM 2.0 device is available.
@@ -19,6 +57,7 @@ def check_tpm_available() -> bool:
             return True
     except Exception:
         return False
+
 
 def get_tpm_fingerprint() -> str:
     """
@@ -34,10 +73,13 @@ def get_tpm_fingerprint() -> str:
         formatted = ':'.join([digest[i:i+2] for i in range(0, len(digest), 2)])
         return formatted
 
+
 def seal_to_tpm(secret: bytes, password_auth: bytes) -> bytes:
     """
     Seal the given secret bytes to the TPM.
+
     Returns the sealed blob (public + private parts) as bytes.
+    Both the TPM and the correct password-derived auth value are required.
     """
     import tpm2_pytss
     from tpm2_pytss import types as tpm2_types
@@ -45,36 +87,31 @@ def seal_to_tpm(secret: bytes, password_auth: bytes) -> bytes:
     esapi = tpm2_pytss.ESAPI()
     primary_handle = None
     try:
-        # Use context manager pattern (esapi.open()/close() don't exist;
-        # ESAPI uses __enter__/__exit__ via 'with tpm2_pytss.ESAPI() as esapi:')
-        # But since we need to manage handles manually, use startup/shutdown
         esapi.startup(tpm2_pytss.constants.TPM2_SU.CLEAR)
 
-        # Create a primary key under the Owner hierarchy
+        # Create a primary key under the Owner hierarchy.
+        # Object attributes: restricted | decrypt | fixedTPM | fixedParent | sensitiveDataOrigin
+        # A restricted key must never be both 'sign' and 'decrypt' at once
+        # (TPM 2.0 spec forbids this combination). We only use decrypt.
         primary_handle = esapi.create_primary(
-            in_sensitive=tpm2_types.TPM2B_SENSITIVE_CREATE(
+            in_sensitive=_make_tpm2b_sensitive_create(
                 tpm2_types.TPM2B_AUTH(buffer=b""),
-                tpm2_types.TPM2B_SENSITIVE_DATA(buffer=b""),
+                tpm2_types.TPM2B_SENSITIVE_DATA(buffer=secret),
             ),
             in_public=tpm2_types.TPM2B_PUBLIC(
                 publicArea=tpm2_types.TPMT_PUBLIC(
                     type=tpm2_pytss.TPM2_ALG.KEYEDHASH,
                     nameAlg=tpm2_pytss.TPM2_ALG.SHA256,
                     objectAttributes=(
-                        tpm2_pytss.TPMA_OBJECT.restricted
+                        tpm2_pytss.TPMA_OBJECT.RESTRICTED
                         | tpm2_pytss.TPMA_OBJECT.DECRYPT
-                        | tpm2_pytss.TPMA_OBJECT.fixedTPM
-                        | tpm2_pytss.TPMA_OBJECT.fixedParent
-                        | tpm2_pytss.TPMA_OBJECT.sensitiveDataOrigin
+                        | tpm2_pytss.TPMA_OBJECT.FIXEDTPM
+                        | tpm2_pytss.TPMA_OBJECT.FIXEDPARENT
+                        | tpm2_pytss.TPMA_OBJECT.SENSITIVEDATAORIGIN
                     ),
                     authPolicy=b"",
                     parameters=tpm2_types.TPMU_PUBLIC_PARMS(
-                        keyedHashDetail=tpm2_types.TPMT_KEYEDHASH_SCHEME(
-                            scheme=tpm2_pytss.TPM2_ALG.XOR,
-                            details=tpm2_types.TPMU_KEYEDHASH_SCHEME(
-                                scheme=tpm2_pytss.TPM2_ALG.NULL
-                            )
-                        )
+                        keyedHashDetail=_make_keyed_hash_public_params()
                     ),
                     unique=tpm2_types.TPMU_PUBLIC_ID(keyedHash=b""),
                 )
@@ -82,30 +119,27 @@ def seal_to_tpm(secret: bytes, password_auth: bytes) -> bytes:
         )
         primary_handle.handle = primary_handle.handle
 
-        # Create a sealed data object under the primary key
+        # Create a sealed data object under the primary key.
+        # Object attributes: fixedTPM | fixedParent | sensitiveDataOrigin | userWithAuth
+        # userWithAuth gates unseal behind the auth value (presented via tr_set_auth).
         in_public = tpm2_types.TPM2B_PUBLIC(
             publicArea=tpm2_types.TPMT_PUBLIC(
                 type=tpm2_pytss.TPM2_ALG.KEYEDHASH,
                 nameAlg=tpm2_pytss.TPM2_ALG.SHA256,
                 objectAttributes=(
-                    tpm2_pytss.TPMA_OBJECT.fixedTPM
-                    | tpm2_pytss.TPMA_OBJECT.fixedParent
-                    | tpm2_pytss.TPMA_OBJECT.sensitiveDataOrigin
-                    | tpm2_pytss.TPMA_OBJECT.userWithAuth
+                    tpm2_pytss.TPMA_OBJECT.FIXEDTPM
+                    | tpm2_pytss.TPMA_OBJECT.FIXEDPARENT
+                    | tpm2_pytss.TPMA_OBJECT.SENSITIVEDATAORIGIN
+                    | tpm2_pytss.TPMA_OBJECT.USERWITHAUTH
                 ),
                 authPolicy=b"",
                 parameters=tpm2_types.TPMU_PUBLIC_PARMS(
-                    keyedHashDetail=tpm2_types.TPMT_KEYEDHASH_SCHEME(
-                        scheme=tpm2_pytss.TPM2_ALG.XOR,
-                        details=tpm2_types.TPMU_KEYEDHASH_SCHEME(
-                            scheme=tpm2_pytss.TPM2_ALG.NULL
-                        )
-                    )
+                    keyedHashDetail=_make_keyed_hash_public_params()
                 ),
                 unique=tpm2_types.TPMU_PUBLIC_ID(keyedHash=b""),
             )
         )
-        in_sensitive = tpm2_types.TPM2B_SENSITIVE_CREATE(
+        in_sensitive = _make_tpm2b_sensitive_create(
             tpm2_types.TPM2B_AUTH(buffer=password_auth),
             tpm2_types.TPM2B_SENSITIVE_DATA(buffer=secret),
         )
@@ -133,11 +167,14 @@ def seal_to_tpm(secret: bytes, password_auth: bytes) -> bytes:
             except Exception:
                 pass
 
+
 def unseal_from_tpm(sealed_blob: bytes, password_auth: bytes) -> bytes:
     """
     Unseal the given sealed blob (public+private) using the TPM.
+
     Returns the original secret bytes.
     On failure, raises ValueError with a message indicating possible wrong machine.
+    Both the TPM and the correct password-derived auth value are required.
     """
     import tpm2_pytss
     from tpm2_pytss import types as tpm2_types
@@ -149,7 +186,7 @@ def unseal_from_tpm(sealed_blob: bytes, password_auth: bytes) -> bytes:
         esapi.startup(tpm2_pytss.constants.TPM2_SU.CLEAR)
 
         primary_handle = esapi.create_primary(
-            in_sensitive=tpm2_types.TPM2B_SENSITIVE_CREATE(
+            in_sensitive=_make_tpm2b_sensitive_create(
                 tpm2_types.TPM2B_AUTH(buffer=b""),
                 tpm2_types.TPM2B_SENSITIVE_DATA(buffer=b""),
             ),
@@ -158,19 +195,14 @@ def unseal_from_tpm(sealed_blob: bytes, password_auth: bytes) -> bytes:
                     type=tpm2_pytss.TPM2_ALG.KEYEDHASH,
                     nameAlg=tpm2_pytss.TPM2_ALG.SHA256,
                     objectAttributes=(
-                        tpm2_pytss.TPMA_OBJECT.fixedTPM
-                        | tpm2_pytss.TPMA_OBJECT.fixedParent
-                        | tpm2_pytss.TPMA_OBJECT.sensitiveDataOrigin
-                        | tpm2_pytss.TPMA_OBJECT.userWithAuth
+                        tpm2_pytss.TPMA_OBJECT.FIXEDTPM
+                        | tpm2_pytss.TPMA_OBJECT.FIXEDPARENT
+                        | tpm2_pytss.TPMA_OBJECT.SENSITIVEDATAORIGIN
+                        | tpm2_pytss.TPMA_OBJECT.USERWITHAUTH
                     ),
                     authPolicy=b"",
                     parameters=tpm2_types.TPMU_PUBLIC_PARMS(
-                        keyedHashDetail=tpm2_types.TPMT_KEYEDHASH_SCHEME(
-                            scheme=tpm2_pytss.TPM2_ALG.XOR,
-                            details=tpm2_types.TPMU_KEYEDHASH_SCHEME(
-                                scheme=tpm2_pytss.TPM2_ALG.NULL
-                            )
-                        )
+                        keyedHashDetail=_make_keyed_hash_public_params()
                     ),
                     unique=tpm2_types.TPMU_PUBLIC_ID(keyedHash=b""),
                 )
@@ -192,16 +224,19 @@ def unseal_from_tpm(sealed_blob: bytes, password_auth: bytes) -> bytes:
         in_private = tpm2_types.TPM2B_PRIVATE()
         in_private.buffer = priv_blob
 
-        # Load the sealed object into the TPM
+        # Load the sealed object into the TPM.
+        # TPM2_Load does NOT take an inAuth parameter; tr_set_auth gates the unseal.
         loaded_handle = esapi.load(
             primary_handle,
             inPrivate=in_private,
             inPublic=in_public,
         )
 
-        # CRITICAL: Set the auth value on the loaded handle using tr_set_auth
-        # This is the real mechanism for presenting the password-derived auth value
-        # TPM2_Load does NOT take an inAuth parameter; tr_set_auth gates the unseal
+        # CRITICAL: Set the auth value on the loaded handle using tr_set_auth.
+        # This is the real mechanism for presenting the password-derived auth value.
+        # TPM2_Load does NOT take an inAuth parameter; tr_set_auth gates the unseal.
+        # The password-derived KEK is presented as the TPM object's auth value,
+        # so both the TPM AND the correct password are required to unseal.
         esapi.tr_set_auth(loaded_handle, tpm2_types.TPM2B_AUTH(buffer=password_auth))
 
         # Now unseal - this will use the auth value set above

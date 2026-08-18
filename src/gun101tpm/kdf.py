@@ -87,10 +87,6 @@ def verify_key(password: str, salt: bytes, expected_key: bytes) -> bool:
         return False
 
 
-def _constant_time_compare(a: bytes, b: bytes) -> bool:
-    """
-    DEPRECATED: Use hmac.compare_digest() instead.
-    This function is kept for backward compatibility but has been
-    replaced by hmac.compare_digest() in the verify_key() function.
-    """
-    return hmac.compare_digest(a, b)
+# _constant_time_compare removed — deprecated; hmac.compare_digest() is the
+# standard constant-time comparison. verify_key() now uses
+# hmac.compare_digest() directly (was already doing so).

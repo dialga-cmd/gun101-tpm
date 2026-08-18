@@ -6,7 +6,6 @@ This guide explains how to set up a TPM 2.0 device for use with GUN-101-TPM.
 
 - A TPM 2.0 hardware chip on your motherboard or a supported TPM simulator (swtpm)
 - `tpm2-pytss` Python package installed
-- `tpm2-tools` command-line tools for TPM management
 - Python 3.9+
 
 ## Enabling the TPM
@@ -56,7 +55,7 @@ If you do not have a physical TPM 2.0 device, you can use the `swtpm` software s
 
 GUN-101-TPM uses the TPM's Endorsement Key (EK) public area fingerprint to bind encrypted files to the machine. The fingerprint is a SHA-256 hash of the EK public area, formatted as a colon-separated uppercase hex string (32 groups of 2 hex digits).
 
-The fingerprint is automatically generated and stored in the encrypted container during encryption. During decryption, it is checked first — if it doesn't match, the operation fails immediately without contacting the TPM.
+The fingerprint is automatically generated and stored in the encrypted container during encryption. During decryption, it is checked first — if it doesn't match, the operation fails immediately without contacting the TMP.
 
 ## Troubleshooting
 

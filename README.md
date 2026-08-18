@@ -39,7 +39,6 @@ pip install gun101-tpm[tpm]
 ### Check TPM Availability
 
 ```bash
-gun1
 gun101tpm check-tpm
 ```
 
