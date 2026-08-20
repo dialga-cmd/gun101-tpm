@@ -220,14 +220,14 @@ def test_modified_tpm_fingerprint_triggers_fast_fail():
         # encrypt_file uses the mocks from the outer with block
         encrypted = encrypt_file(data, password)
 
-        # Corrupt the sealed_blob
+        # Corrupt the tpm_fingerprint_hash
         import json
         container = json.loads(encrypted.decode('utf-8'))
-        fp = container['tpm_fingerprint']
+        fp = container['tpm_fingerprint_hash']
         lst = list(fp)
         lst[0] = '0' if lst[0] != '0' else '1'
         corrupted_fp = ''.join(lst)
-        container['tpm_fingerprint'] = corrupted_fp
+        container['tpm_fingerprint_hash'] = corrupted_fp
         corrupted_encrypted = json.dumps(container).encode('utf-8')
 
         # decrypt_file also uses the mocks (they're still active)
@@ -306,7 +306,7 @@ def test_dek_not_present_in_container():
         container = json.loads(encrypted.decode('utf-8'))
 
         # Verify that the DEK is not stored as a field in the container
-        # The container should only have: protocol, version, tpm_fingerprint, salt,
+        # The container should only have: protocol, version, tpm_fingerprint_hash, salt,
         # sealed_blob, file_nonce, file_tag, ciphertext
         for field in ("dek_nonce", "dek_ciphertext", "dek_tag", "dek"):
             assert field not in container, f"Field '{field}' should not be in container"
