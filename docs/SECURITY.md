@@ -8,7 +8,7 @@
 
 - **Tampered ciphertext**: File data is encrypted with AES-256-GCM; any modification to the ciphertext or tag is detected during decryption and fails authentication.
 
-- **TPM fingerprint mismatch**: Each TPM has a unique Endorsement Key (EK) fingerprint. The container stores the fingerprint of the machine that encrypted the file, and decryption fails if the fingerprint does not match the current TPM. This check occurs before any TPM operation.
+- **TPM hardware binding**: The encrypted container does not store a TPM fingerprint or other device identifier. The DEK is sealed in a TPM object with `fixedTPM` and `fixedParent` attributes, so `unseal_from_tpm()` is the binding check and fails on another TPM.
 
 - **Side-channel leakage from key comparison**: The `verify_key()` function uses `hmac.compare_digest()` for constant-time comparison, preventing timing attacks based on key similarity.
 

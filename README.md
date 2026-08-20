@@ -35,9 +35,8 @@ is sealed inside the Trusted Platform Module (TPM 2.0) hardware.
 2. The DEK is encrypted with a Key Encryption Key (KEK) derived from your password via Argon2id.
 3. The encrypted DEK is sealed to the TPM using a symmetric key bound to the TPM.
 4. The file itself is encrypted with the DEK using AES-256-GCM.
-5. The TPM's Endorsement Key (EK) public area is hashed to form a fingerprint, stored in the container.
-   During decryption, the fingerprint is checked first — if it doesn't match, the operation fails
-   immediately without contacting the TPM.
+5. The DEK is sealed to the TPM. The encrypted container contains no TPM fingerprint or other
+  encrypting-device identifier; during decryption, the TPM itself must successfully unseal the DEK.
 
 - TPM 2.0 chip
 - `tpm2-pytss` Python package (optional install)

@@ -59,7 +59,7 @@ If you do not have a physical TPM 2.0 device, you can use the `swtpm` software s
 
 GUN-101-TPM uses the TPM's Endorsement Key (EK) public area fingerprint to bind encrypted files to the machine. The fingerprint is a SHA-256 hash of the EK public area, formatted as a colon-separated uppercase hex string (32 groups of 2 hex digits).
 
-The fingerprint is automatically generated and stored in the encrypted container during encryption. During decryption, it is checked first — if it doesn't match, the operation fails immediately without contacting the TMP.
+The fingerprint is used only by the diagnostic `check-tpm` command. It is not stored in newly encrypted containers. During decryption, the TPM-bound sealed object is used to verify that the original TPM is available.
 
 ## Troubleshooting
 

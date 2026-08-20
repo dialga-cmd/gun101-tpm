@@ -32,6 +32,8 @@ def test_encrypt_file_has_no_kek_fields():
         # These fields must NOT be present in the container
         for field in ("dek_nonce", "dek_ciphertext", "dek_tag"):
             assert field not in container, f"Field '{field}' should not be in container"
+        assert "tpm_fingerprint_hash" not in container
+        assert "tpm_fingerprint" not in container
 
 
 def test_encrypt_file_has_sealed_blob():
@@ -123,7 +125,7 @@ def test_tpm_binding_enforced_even_with_correct_password():
         # Use different fingerprint to simulate different machine
         mock_fingerprint.return_value = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
 
-        with pytest.raises(ValueError, match="different machine"):
+        with pytest.raises(ValueError, match="TPM unseal failed"):
             decrypt_file(encrypted, password)
 
 
@@ -196,8 +198,8 @@ def test_tampered_sealed_blob_causes_tpm_unseal_failure():
             decrypt_file(corrupted_encrypted, password)
 
 
-def test_modified_tpm_fingerprint_triggers_fast_fail():
-    """Modified tpm_fingerprint in container triggers fast-fail before any TPM operation."""
+def test_new_container_does_not_expose_tpm_fingerprint():
+    """New containers do not expose a fingerprint for the encrypting TPM."""
     data = b"test data"
     password = "password"
 
@@ -220,19 +222,10 @@ def test_modified_tpm_fingerprint_triggers_fast_fail():
         # encrypt_file uses the mocks from the outer with block
         encrypted = encrypt_file(data, password)
 
-        # Corrupt the tpm_fingerprint_hash
         import json
         container = json.loads(encrypted.decode('utf-8'))
-        fp = container['tpm_fingerprint_hash']
-        lst = list(fp)
-        lst[0] = '0' if lst[0] != '0' else '1'
-        corrupted_fp = ''.join(lst)
-        container['tpm_fingerprint_hash'] = corrupted_fp
-        corrupted_encrypted = json.dumps(container).encode('utf-8')
-
-        # decrypt_file also uses the mocks (they're still active)
-        with pytest.raises(ValueError, match="different machine"):
-            decrypt_file(corrupted_encrypted, password)
+        assert "tpm_fingerprint_hash" not in container
+        assert "tpm_fingerprint" not in container
 
 
 def test_two_encryptions_produce_different_salts():

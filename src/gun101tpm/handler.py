@@ -24,10 +24,6 @@ def _clear_memory(data):
         # Bytes are immutable, but we can overwrite reference
         pass  # Python's garbage collector will handle this eventually
 
-def hash_fingerprint(fp: str) -> str:
-    """Hash the TPM fingerprint to prevent exposing it."""
-    return hashlib.sha256(fp.encode('utf-8')).hexdigest()
-
 def encrypt_file(file_data: bytes, password: str) -> bytes:
     """
     Encrypt data using password-derived key wrapped with TPM sealing.
@@ -64,11 +60,11 @@ def encrypt_file(file_data: bytes, password: str) -> bytes:
     _clear_memory(bytearray(dek))
     _clear_memory(bytearray(kek))
 
-    # Create container — only store TPM-sealed blob, no KEK-encrypted DEK fields
+    # The sealed blob is already bound to this TPM; do not expose a device
+    # identifier in the container.
     container = {
         "protocol": PROTOCOL,
         "version": VERSION,
-        "tpm_fingerprint_hash": hash_fingerprint(get_tpm_fingerprint()),
         "salt": base64.b64encode(salt).decode('utf-8'),
         "sealed_blob": base64.b64encode(sealed_blob).decode('utf-8'),
         "file_nonce": base64.b64encode(file_nonce).decode('utf-8'),
@@ -110,24 +106,22 @@ def decrypt_file(encrypted_data: bytes, password: str) -> bytes:
     if container.get("version") != VERSION:
         raise ValueError(f"Unsupported version: {container.get('version')}")
 
-    # Check TPM fingerprint matches container["tpm_fingerprint_hash"] or container["tpm_fingerprint"]
-    current_fingerprint = get_tpm_fingerprint()
-    
+    # Older containers exposed a fingerprint. Keep reading it for backwards
+    # compatibility, but never include one in newly encrypted containers.
     if "tpm_fingerprint_hash" in container:
-        if container["tpm_fingerprint_hash"] != hash_fingerprint(current_fingerprint):
+        current_fingerprint = get_tpm_fingerprint()
+        if container["tpm_fingerprint_hash"] != hashlib.sha256(current_fingerprint.encode('utf-8')).hexdigest():
             raise ValueError(
                 "This file was encrypted on a different machine and cannot be decrypted here. "
                 "GUN-101-TPM files are hardware-bound."
             )
     elif "tpm_fingerprint" in container:
+        current_fingerprint = get_tpm_fingerprint()
         if container["tpm_fingerprint"] != current_fingerprint:
             raise ValueError(
                 "This file was encrypted on a different machine and cannot be decrypted here. "
                 "GUN-101-TPM files are hardware-bound."
             )
-    else:
-        raise ValueError("Invalid container format: missing TPM fingerprint")
-
     # Extract fields
     try:
         salt = base64.b64decode(container['salt'])
