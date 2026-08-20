@@ -1,6 +1,6 @@
 # GUN-101-TPM: Hardware-bound File Encryption
 
-## 🛡️ Platform Support
+## Platform Support
 
 **GUN-101-TPM is currently Linux-only.** TPM 2.0 hardware binding is not yet supported on Windows or macOS. This limitation is due to the tpm2-pytss library's reliance on Linux-specific kernel interfaces ( `/dev/tpm0`, `/dev/tpmrm0` ) and the kernel's TPM 2.0 device model.
 
@@ -22,7 +22,7 @@ GUN-101-TPM creates encrypted files that can only be decrypted on the machine th
 Even with the correct password, decryption fails on any other machine because the encryption key
 is sealed inside the Trusted Platform Module (TPM 2.0) hardware.
 
-## ⚠️ Important Security Notes
+## Important Security Notes
 
 - **Hardware-bound**: Without the original TPM, decryption is impossible — even with the password.
 - **Two-layer protection**: Requires both the password-derived key and the TPM seal.
@@ -42,7 +42,7 @@ is sealed inside the Trusted Platform Module (TPM 2.0) hardware.
 - TPM 2.0 chip
 - `tpm2-pytss` Python package (optional install)
 
-## 📦 Installation
+## Installation
 
 ```bash
 # Install base package (without TPM support)
@@ -52,7 +52,7 @@ pip install gun101-tpm
 pip install gun101-tpm[tpm]
 ```
 
-## 💻 Usage
+## Usage
 
 ### Check TPM Availability
 
@@ -76,7 +76,7 @@ gun101tpm decrypt secret.pdf.gun101
 # Output: secret.pdf (if on the same machine)
 ```
 
-## 🆚 When to Use Which GUN-101 Mode
+## When to Use Which GUN-101 Mode
 
 | Mode          | Key Binding              | Portability | Use Case                                  |
 |---------------|--------------------------|-------------|-------------------------------------------|
@@ -84,16 +84,16 @@ gun101tpm decrypt secret.pdf.gun101
 | GUN-101-GKP   | Password + GPG key       | Medium      | Shared environments with key distribution |
 | GUN-101-TPM   | Password + TPM 2.0 seal  | None        | Maximum security on a single trusted device |
 
-## 📚 Documentation
+## Documentation
 
 - [Security Model](docs/SECURITY.md)
 - [Threat Model](docs/THREAT_MODEL.md)
 - [TPM Setup Guide](docs/TPM_SETUP.md)
 
-## 🛡️ License
+## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🐛 Reporting Issues
+## Reporting Issues
 
 Please report security issues and bugs via the GitHub issue tracker.
