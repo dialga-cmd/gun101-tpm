@@ -73,26 +73,25 @@ def test_backend_selection_unsupported():
             get_backend()
 
 
-# ── Windows stub backend ──
+# ── Windows TBS backend ──
 
-def test_windows_check_available_not_implemented():
-    """WindowsTBSBackend.check_available() raises NotImplementedError."""
+def test_windows_check_available_without_tbs():
+    """WindowsTBSBackend.check_available() returns False without active tbs.dll."""
     backend = WindowsTBSBackend()
-    with pytest.raises(NotImplementedError, match="Windows TBS backend"):
-        backend.check_available()
+    assert backend.check_available() is False
 
 
-def test_windows_seal_not_implemented():
-    """WindowsTBSBackend.seal() raises NotImplementedError."""
+def test_windows_seal_without_tbs():
+    """WindowsTBSBackend.seal() raises RuntimeError without active tbs.dll."""
     backend = WindowsTBSBackend()
-    with pytest.raises(NotImplementedError, match="Windows TBS backend"):
+    with pytest.raises(RuntimeError, match="unavailable on Windows TBS"):
         backend.seal(b"test", b"pass")
 
 
-def test_windows_unseal_not_implemented():
-    """WindowsTBSBackend.unseal() raises NotImplementedError."""
+def test_windows_unseal_without_tbs():
+    """WindowsTBSBackend.unseal() raises RuntimeError without active tbs.dll."""
     backend = WindowsTBSBackend()
-    with pytest.raises(NotImplementedError, match="Windows TBS backend"):
+    with pytest.raises(RuntimeError, match="unavailable on Windows TBS"):
         backend.unseal(b"test", b"pass")
 
 
@@ -125,15 +124,14 @@ def test_tpm_shim_check_tpm_available():
     """gun101tpm.tpm.check_tpm_available still works via backward compat shim."""
     from gun101tpm.tpm import check_tpm_available
     with patch('sys.platform', 'win32'):
-        with pytest.raises(NotImplementedError):
-            check_tpm_available()
+        assert check_tpm_available() is False
 
 
 def test_tpm_shim_seal_to_tpm():
     """gun101tpm.tpm.seal_to_tpm still works via backward compat shim."""
     from gun101tpm.tpm import seal_to_tpm
     with patch('sys.platform', 'win32'):
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(RuntimeError, match="unavailable on Windows TBS"):
             seal_to_tpm(b"test", b"pass")
 
 
