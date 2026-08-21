@@ -93,28 +93,52 @@ class WindowsTBSBackend(HardwareBackend):
 
     def __init__(self, tbs_lib=None):
         self._tbs = tbs_lib if tbs_lib is not None else _get_tbs_library()
+        if self._tbs:
+            try:
+                # Set explicit C function signatures according to Windows tbs.h
+                self._tbs.Tbsi_Context_Create.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
+                self._tbs.Tbsi_Context_Create.restype = ctypes.c_uint32
+
+                self._tbs.Tbsip_Context_Close.argtypes = [ctypes.c_uint32]
+                self._tbs.Tbsip_Context_Close.restype = ctypes.c_uint32
+
+                self._tbs.Tbsip_Submit_Command.argtypes = [
+                    ctypes.c_uint32,  # hContext
+                    ctypes.c_uint32,  # Locality
+                    ctypes.c_uint32,  # Priority
+                    ctypes.c_char_p,  # pCommandBuf
+                    ctypes.c_uint32,  # CommandBufLen
+                    ctypes.c_char_p,  # pResultBuf
+                    ctypes.POINTER(ctypes.c_uint32)  # pResultBufLen
+                ]
+                self._tbs.Tbsip_Submit_Command.restype = ctypes.c_uint32
+            except Exception:
+                pass
 
     def _open_context(self) -> Optional[int]:
         """Open a TBS context for TPM 2.0."""
         if not self._tbs:
             return None
 
-        params = TBS_CONTEXT_PARAMS2()
-        params.version = TBS_CONTEXT_VERSION_2
-        params.flags = 0x00000002  # TPM_VERSION_20 flag (include TPM 2.0 context)
+        # 1. Try TBS_CONTEXT_PARAMS2 (TPM 2.0)
+        params2 = TBS_CONTEXT_PARAMS2()
+        params2.version = TBS_CONTEXT_VERSION_2
+        params2.flags = 0x00000002  # TPM_VERSION_20 flag
 
-        hcontext = ctypes.c_void_p()
+        hcontext = ctypes.c_uint32(0)
         try:
             res = self._tbs.Tbsi_Context_Create(
-                ctypes.byref(params),
+                ctypes.byref(params2),
                 ctypes.byref(hcontext)
             )
-            if res == TBS_SUCCESS and hcontext.value:
+            if res == TBS_SUCCESS and hcontext.value != 0:
                 return hcontext.value
-        except Exception:
-            pass
+            else:
+                print(f"[DEBUG TBS] PARAMS2 returned code: {hex(res & 0xFFFFFFFF)}")
+        except Exception as e:
+            print(f"[DEBUG TBS] PARAMS2 exception: {e}")
 
-        # Fallback to version 1 structure if params2 is unsupported
+        # 2. Try TBS_CONTEXT_PARAMS (Version 1)
         params1 = TBS_CONTEXT_PARAMS()
         params1.version = TBS_CONTEXT_VERSION_1
         try:
@@ -122,10 +146,12 @@ class WindowsTBSBackend(HardwareBackend):
                 ctypes.byref(params1),
                 ctypes.byref(hcontext)
             )
-            if res == TBS_SUCCESS and hcontext.value:
+            if res == TBS_SUCCESS and hcontext.value != 0:
                 return hcontext.value
-        except Exception:
-            pass
+            else:
+                print(f"[DEBUG TBS] PARAMS1 returned code: {hex(res & 0xFFFFFFFF)}")
+        except Exception as e:
+            print(f"[DEBUG TBS] PARAMS1 exception: {e}")
 
         return None
 
@@ -133,7 +159,7 @@ class WindowsTBSBackend(HardwareBackend):
         """Close an open TBS context handle."""
         if self._tbs and hcontext:
             try:
-                self._tbs.Tbsip_Context_Close(ctypes.c_void_p(hcontext))
+                self._tbs.Tbsip_Context_Close(ctypes.c_uint32(hcontext))
             except Exception:
                 pass
 
@@ -146,7 +172,7 @@ class WindowsTBSBackend(HardwareBackend):
         out_len = ctypes.c_uint32(4096)
 
         res = self._tbs.Tbsip_Submit_Command(
-            ctypes.c_void_p(hcontext),
+            ctypes.c_uint32(hcontext),
             0,  # TBS_COMMAND_LOCALITY_ZERO
             0,  # TBS_COMMAND_PRIORITY_NORMAL
             command,
