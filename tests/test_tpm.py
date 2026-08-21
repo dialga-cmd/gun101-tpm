@@ -6,8 +6,14 @@ No mocks are used. If TPM 2.0 hardware/driver is missing or inaccessible, tests 
 with the actual hardware/system error.
 """
 
+import os
+import sys
 import json
 import base64
+
+# Ensure src directory is in sys.path for test discovery on Windows/Linux
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+
 import pytest
 
 from gun101tpm.handler import encrypt_file, decrypt_file

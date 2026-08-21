@@ -5,9 +5,13 @@ These tests run directly against native Windows tbs.dll and TPM 2.0 hardware on 
 No mocks are used.
 """
 
+import os
 import sys
-import pytest
 
+# Ensure src directory is in sys.path for test discovery on Windows
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+
+import pytest
 from gun101tpm.backends.windows import WindowsTBSBackend
 
 

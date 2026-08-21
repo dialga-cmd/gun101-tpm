@@ -4,7 +4,12 @@ Tests for platform backend selection and gating.
 Verifies that the backend registry selects the correct backend
 for each platform and that stub backends raise NotImplementedError.
 """
+import os
 import sys
+
+# Ensure src directory is in sys.path for test discovery on Windows/Linux
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+
 from unittest.mock import patch
 import pytest
 
