@@ -4,7 +4,7 @@ Handler functions for GUN-101-TPM encryption/decryption.
 
 from .config import (PROTOCOL, VERSION, DEK_LEN, AES_NONCE_LEN, ARGON2_TIME_COST,
                      ARGON2_MEMORY_COST, ARGON2_PARALLELISM, SALT_LEN)
-from .tpm import check_tpm_available, get_tpm_fingerprint, seal_to_tpm, unseal_from_tpm
+from .backends import check_tpm_available, get_tpm_fingerprint, seal_to_tpm, unseal_from_tpm
 from .kdf import derive_key
 from .cipher import encrypt as aes_encrypt, decrypt as aes_decrypt
 import base64

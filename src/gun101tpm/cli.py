@@ -7,7 +7,7 @@ import sys
 import os
 import getpass
 from .handler import encrypt_file, decrypt_file
-from .tpm import check_tpm_available, get_tpm_fingerprint, _check_platform_supported
+from .backends import check_tpm_available, get_tpm_fingerprint
 
 
 def get_password() -> str:
@@ -58,7 +58,6 @@ def main():
 
     if args.command == "check-tpm":
         try:
-            _check_platform_supported()
             if check_tpm_available():
                 try:
                     fingerprint = get_tpm_fingerprint()
@@ -66,7 +65,7 @@ def main():
                 except Exception as e:
                     print(f"Error reading TPM fingerprint: {e}")
                     sys.exit(1)
-        except RuntimeError as e:
+        except (RuntimeError, NotImplementedError) as e:
             print(f"Error: {e}")
             sys.exit(1)
 
