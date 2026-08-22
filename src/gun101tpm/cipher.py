@@ -14,11 +14,9 @@ def encrypt(plaintext: bytes, key: bytes) -> tuple[bytes, bytes, bytes]:
     """
     if len(key) != 32:
         raise ValueError("Key must be 32 bytes for AES-256")
-    aesgcm = AESGCM(key)
-    nonce = bytes([0] * AES_NONCE_LEN)  # We'll replace with random bytes
-    # Actually, we need to generate a random nonce.
     import os
     nonce = os.urandom(AES_NONCE_LEN)
+    aesgcm = AESGCM(key)
     ciphertext = aesgcm.encrypt(nonce, plaintext, None)
     # AESGCM.encrypt returns ciphertext + tag concatenated.
     # The tag is the last 16 bytes.

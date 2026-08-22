@@ -48,9 +48,10 @@ def derive_key(password: str, salt: bytes) -> bytes:
 
     key = base64.b64decode(hash_b64)
 
-    # Ensure we have exactly 32 bytes
+    # Argon2id with hash_len=32 always produces exactly 32 bytes.
+    # The following guard is kept for extreme edge-case safety but should
+    # never trigger with proper argon2-cffi version.
     if len(key) != 32:
-        # If not 32 bytes, derive again with truncation/extension
         hasher2 = argon2.PasswordHasher(
             time_cost=ARGON2_TIME_COST,
             memory_cost=ARGON2_MEMORY_COST,

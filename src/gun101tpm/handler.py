@@ -13,7 +13,7 @@ import hashlib
 import secrets
 import os
 
-KDF_CACHE = {}
+KDF_CACHE: dict = {}
 
 def _clear_memory(data):
     """Securely clear sensitive data from memory when possible."""
@@ -21,8 +21,10 @@ def _clear_memory(data):
         for i in range(len(data)):
             data[i] = 0
     elif isinstance(data, bytes):
-        # Bytes are immutable, but we can overwrite reference
-        pass  # Python's garbage collector will handle this eventually
+        # Convert to bytearray, clear, then let GC reclaim
+        ba = bytearray(data)
+        for i in range(len(ba)):
+            ba[i] = 0
 
 def encrypt_file(file_data: bytes, password: str) -> bytes:
     """
