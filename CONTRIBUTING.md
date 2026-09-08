@@ -127,9 +127,11 @@ The full suite:
 pytest tests/ -v --cov=src/gun101tpm --cov-report=term-missing --cov-fail-under=80
 ```
 
-Coverage excludes the experimental Flet GUI and native Windows TBS calls,
-which require platform-specific runtime environments. The Linux backend and
-all portable library, handler, KDF, cipher, and CLI paths remain measured.
+Coverage excludes the experimental Flet GUI and native TPM backend calls,
+which require platform-specific runtime environments or TPM hardware. The
+backend registry and all portable library, handler, KDF, cipher, and CLI paths
+remain measured. Hardware integration tests still run when a TPM is available
+and skip cleanly otherwise.
 
 The tests fall into three groups with different requirements:
 
