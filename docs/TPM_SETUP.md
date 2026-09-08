@@ -22,8 +22,9 @@ This guide explains how to set up a TPM 2.0 device for use with GUN-101-TPM on L
      sudo usermod -aG tss $(whoami)
      newgrp tss
      ```
-   - **Windows**: TPM is typically enabled via Windows Settings > Privacy > Trusted Platform Module.
-   - **macOS**: TPM is available on Apple Silicon Macs via the Secure Enclave.
+    - **Windows**: The TBS backend is work in progress and currently emulates
+       sealing; it is not yet genuine TPM hardware binding.
+    - **macOS**: The Secure Enclave backend is not implemented yet.
 
 3. **Verify TPM Availability**: Run the following check:
    ```bash
@@ -64,7 +65,10 @@ The fingerprint is used only by the diagnostic `check-tpm` command. It is not st
 ## Troubleshooting
 
 - **"TPM 2.0 device not found"**: Ensure the TPM is enabled in BIOS/UEFI, the `tss` group has access, and the `tpm2-pytss` package is installed.
-- **"TPM unseal failed"**: This may indicate a different machine, wrong password, or corrupted sealed blob. Verify the TPM fingerprint matches and the correct password is used.
+- **"TPM unseal failed"**: This may indicate a different machine, wrong
+   password, or corrupted sealed blob. Confirm that the original TPM is
+   available and that the correct password is used. Fingerprints are diagnostic
+   only and are not stored in encrypted containers.
 - **"Invalid sealed blob"**: The container may be corrupted. Re-encrypt the file if possible.
 
 ## Quick Start (with physical TPM)

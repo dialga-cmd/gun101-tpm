@@ -48,7 +48,7 @@ jobs:
       - name: Run tests with assertions enabled
         env:
           PYTHONOPTIMIZE: ""
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q --cov=src/gun101tpm --cov-report=term-missing --cov-fail-under=80
 
   build:
     name: Build distributions

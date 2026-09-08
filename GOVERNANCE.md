@@ -23,3 +23,8 @@ publishing, branch protection, or other sensitive resources, the maintainer
 reviews the collaborator's identity, contribution history, intended duties,
 and least-privilege requirements. Permission changes are made manually in
 GitHub and recorded in the repository access history.
+
+Continuity requirements and the current single-maintainer risk are documented
+in the [continuity plan](docs/CONTINUITY.md). A backup maintainer must be
+appointed before the project can claim a bus factor of two or full access
+continuity.

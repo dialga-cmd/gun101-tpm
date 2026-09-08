@@ -23,6 +23,8 @@ objects, release artifacts, and CI credentials.
 - Argon2id derives a 32-byte KEK using fixed cost parameters and a per-file
   salt.
 - AES-256-GCM authenticates every encrypted file with a fresh nonce.
+- The container format supports an allowlisted alternative, ChaCha20-Poly1305,
+  while retaining AES-256-GCM as the default for compatibility.
 - TPM objects use fixed-TPM and fixed-parent attributes and require the
   password-derived auth value.
 - Cryptographic primitives come from `cryptography`, `argon2-cffi`, and

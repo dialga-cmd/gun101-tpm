@@ -5,7 +5,14 @@ Supports multiple hardware backends: Linux TPM 2.0, Windows TBS,
 and macOS Secure Enclave (stub).
 """
 
-from .config import PROTOCOL, VERSION, DEK_LEN, SALT_LEN
+from .config import (
+    DEFAULT_CIPHER,
+    PROTOCOL,
+    SUPPORTED_CIPHERS,
+    VERSION,
+    DEK_LEN,
+    SALT_LEN,
+)
 from .backends import unseal_from_tpm, get_backend
 from .kdf import derive_key
 from .cipher import encrypt as aes_encrypt, decrypt as aes_decrypt
@@ -26,7 +33,11 @@ def _clear_memory(data):
             ba[i] = 0
 
 
-def encrypt_file(file_data: bytes, password: str) -> bytes:
+def encrypt_file(
+    file_data: bytes,
+    password: str,
+    algorithm: str = DEFAULT_CIPHER,
+) -> bytes:
     """
     Encrypt data using password-derived key wrapped with hardware binding.
 
@@ -37,12 +48,14 @@ def encrypt_file(file_data: bytes, password: str) -> bytes:
     hardware binding method.
     """
     # Get the appropriate backend (auto-selects based on sys.platform)
-    # Validate inputs
-    # Get the appropriate backend (auto-selects based on sys.platform)
     backend = get_backend()
 
-    if not password or not isinstance(password, str):
+    if not isinstance(file_data, bytes):
+        raise ValueError("File data must be bytes")
+    if not isinstance(password, str) or not password:
         raise ValueError("Password must be a non-empty string")
+    if algorithm not in SUPPORTED_CIPHERS:
+        raise ValueError(f"Unsupported cipher: {algorithm}")
     if len(file_data) > (1 << 30):  # 1 GiB limit
         raise ValueError("File too large (max 1 GiB)")
 
@@ -60,7 +73,7 @@ def encrypt_file(file_data: bytes, password: str) -> bytes:
     sealed_blob = backend.seal(dek, kek)
 
     # Encrypt the file data with the DEK
-    file_nonce, file_ciphertext, file_tag = aes_encrypt(file_data, dek)
+    file_nonce, file_ciphertext, file_tag = aes_encrypt(file_data, dek, algorithm)
 
     # Clear sensitive keys from memory
     _clear_memory(bytearray(dek))
@@ -80,6 +93,7 @@ def encrypt_file(file_data: bytes, password: str) -> bytes:
     container = {
         "protocol": PROTOCOL,
         "version": VERSION,
+        "cipher": algorithm,
         "mode": mode,  # TPM or Unknown
         "salt": base64.b64encode(salt).decode('utf-8'),
         "sealed_blob": base64.b64encode(sealed_blob).decode('utf-8'),
@@ -107,7 +121,9 @@ def decrypt_file(encrypted_data: bytes, password: str) -> bytes:
     auth value, so both the password AND the hardware module are required.
     """
     # Validate inputs
-    if not password or not isinstance(password, str):
+    if not isinstance(encrypted_data, bytes):
+        raise ValueError("Encrypted data must be bytes")
+    if not isinstance(password, str) or not password:
         raise ValueError("Password must be a non-empty string")
 
     # Parse JSON container
@@ -115,21 +131,33 @@ def decrypt_file(encrypted_data: bytes, password: str) -> bytes:
         container = json.loads(encrypted_data.decode('utf-8'))
     except (json.JSONDecodeError, UnicodeDecodeError) as e:
         raise ValueError("Invalid container format") from e
+    if not isinstance(container, dict):
+        raise ValueError("Invalid container format")
 
     # Verify protocol and version
     if container.get("protocol") != PROTOCOL:
         raise ValueError(f"Unsupported protocol: {container.get('protocol')}")
     if container.get("version") != VERSION:
         raise ValueError(f"Unsupported version: {container.get('version')}")
+    algorithm = container.get("cipher", DEFAULT_CIPHER)
+    if algorithm not in SUPPORTED_CIPHERS:
+        raise ValueError(f"Unsupported cipher: {algorithm}")
 
     # Extract fields first (needed for both modes)
     try:
-        salt = base64.b64decode(container['salt'])
-        sealed_blob = base64.b64decode(container['sealed_blob'])
-        file_nonce = base64.b64decode(container['file_nonce'])
-        file_tag = base64.b64decode(container['file_tag'])
-        ciphertext = base64.b64decode(container['ciphertext'])
-    except Exception as e:
+        encoded_fields = (
+            'salt', 'sealed_blob', 'file_nonce', 'file_tag', 'ciphertext'
+        )
+        if any(not isinstance(container[field], str) for field in encoded_fields):
+            raise ValueError("Container fields must be base64 strings")
+        salt = base64.b64decode(container['salt'], validate=True)
+        sealed_blob = base64.b64decode(container['sealed_blob'], validate=True)
+        file_nonce = base64.b64decode(container['file_nonce'], validate=True)
+        file_tag = base64.b64decode(container['file_tag'], validate=True)
+        ciphertext = base64.b64decode(container['ciphertext'], validate=True)
+        if not sealed_blob:
+            raise ValueError("Sealed blob must not be empty")
+    except (KeyError, TypeError, ValueError) as e:
         raise ValueError("Failed to decode container fields") from e
 
     # Derive KEK from password using Argon2id (used as hardware auth value)
@@ -151,7 +179,7 @@ def decrypt_file(encrypted_data: bytes, password: str) -> bytes:
 
     # Decrypt the file data with the DEK
     try:
-        plaintext = aes_decrypt(file_nonce, ciphertext, file_tag, dek)
+        plaintext = aes_decrypt(file_nonce, ciphertext, file_tag, dek, algorithm)
     except ValueError as e:
         _clear_memory(bytearray(dek))
         raise ValueError("Decryption failed. Data may be corrupted.") from e

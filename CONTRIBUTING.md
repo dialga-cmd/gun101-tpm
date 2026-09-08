@@ -124,8 +124,12 @@ repository's GitHub Actions quality workflow.
 The full suite:
 
 ```bash
-pytest tests/ -v
+pytest tests/ -v --cov=src/gun101tpm --cov-report=term-missing --cov-fail-under=80
 ```
+
+Coverage excludes the experimental Flet GUI and native Windows TBS calls,
+which require platform-specific runtime environments. The Linux backend and
+all portable library, handler, KDF, cipher, and CLI paths remain measured.
 
 The tests fall into three groups with different requirements:
 
@@ -225,8 +229,8 @@ Additional rules:
 ## Development environment notes
 
 - `src/gun101tpm/main.py` is an experimental Flet GUI that mirrors the CLI
-  and is not yet tracked in git. Changes to it are welcome but secondary to
-  the library and CLI.
+  and is tracked in the source tree. Changes to it are welcome but secondary
+  to the library and CLI.
 - `src/gun101tpm/tpm.py` is a backward-compatibility shim that re-exports
   the backend functions. Keep it working; don't delete it.
 - Never commit environment artifacts: `venv/`, `.idea/`, `.mypy_cache/`,

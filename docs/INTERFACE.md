@@ -50,8 +50,11 @@ Existing output files require confirmation.
   status `2`.
 
 Encrypted containers are UTF-8 JSON documents containing the protocol version,
-hardware-binding mode, salt, sealed key blob, file nonce, authentication tag,
-and ciphertext. Sensitive keys and passwords are not part of the container.
+hardware-binding mode, cipher selection, salt, sealed key blob, file nonce,
+authentication tag, and ciphertext. Sensitive keys and passwords are not part
+of the container. The default cipher is `AES-256-GCM`; the Python API also
+supports the allowlisted `CHACHA20-POLY1305` algorithm through its optional
+`algorithm` argument.
 
 ## Python interface
 

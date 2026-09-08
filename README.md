@@ -95,6 +95,8 @@ gun101tpm decrypt secret.pdf.gun101
 
 - [Command-line and Python interface](docs/INTERFACE.md)
 - [Build Guide](docs/BUILD.md)
+- [Assurance Case](docs/ASSURANCE_CASE.md)
+- [Continuity Plan](docs/CONTINUITY.md)
 - [Dependency Policy](docs/DEPENDENCIES.md)
 - [Release Verification](docs/RELEASE_VERIFICATION.md)
 - [Secrets Policy](docs/SECRETS.md)
@@ -104,6 +106,7 @@ gun101tpm decrypt secret.pdf.gun101
 - [Security Model](docs/SECURITY.md)
 - [Threat Model](docs/THREAT_MODEL.md)
 - [TPM Setup Guide](docs/TPM_SETUP.md)
+- [Upgrade Guide](docs/UPGRADING.md)
 - [Vulnerability Exploitability (VEX) Policy](docs/VEX.md)
 
 ## License

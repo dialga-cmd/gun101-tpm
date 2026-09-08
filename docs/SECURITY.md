@@ -7,6 +7,10 @@
 - **Pure-password-based decryption**: Decryption requires both the correct password (which derives a Key Encryption Key via Argon2id) **and** a successful TPM unseal operation. The password alone is insufficient, even if the KEK could be derived from it.
 
 - **Tampered ciphertext**: File data is encrypted with AES-256-GCM; any modification to the ciphertext or tag is detected during decryption and fails authentication.
+- **Algorithm agility**: New containers record an allowlisted cipher choice.
+	AES-256-GCM is the default and ChaCha20-Poly1305 is available as an
+	alternative using the same 32-byte key size and authenticated-encryption
+	interface. Older containers without a cipher field default to AES-256-GCM.
 
 - **TPM hardware binding**: The encrypted container does not store a TPM fingerprint or other device identifier. The DEK is sealed in a TPM object with `fixedTPM` and `fixedParent` attributes, so `unseal_from_tpm()` is the binding check and fails on another TPM.
 

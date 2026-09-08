@@ -15,3 +15,5 @@ dist/
 *.secret
 credentials.json
 secrets.json
+.venv
+.gitignore

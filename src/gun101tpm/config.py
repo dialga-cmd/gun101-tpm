@@ -1,5 +1,7 @@
 PROTOCOL = "GUN-101-TPM"
 VERSION = "2.0"
+DEFAULT_CIPHER = "AES-256-GCM"
+SUPPORTED_CIPHERS = frozenset({"AES-256-GCM", "CHACHA20-POLY1305"})
 DEK_LEN = 32                  # Data Encryption Key length
 AES_NONCE_LEN = 12
 SALT_LEN = 16                 # Argon2 salt length
