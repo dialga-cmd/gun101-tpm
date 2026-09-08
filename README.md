@@ -1,5 +1,7 @@
 # GUN-101-TPM: Hardware-bound File Encryption
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14547/badge)](https://www.bestpractices.dev/projects/14547)
+
 ## Platform Support
 
 **GUN-101-TPM is currently Linux-first.** TPM 2.0 hardware binding is fully supported on Linux. Windows support is **work in progress** — a native TBS-based backend exists but its seal/unseal is still emulated and not yet provably hardware-bound. macOS is not yet supported.
@@ -15,12 +17,17 @@
 
 ---
 
-GUN-101-TPM creates encrypted files that can only be decrypted on the machine that created them.
-...
+## What problem does this solve?
 
-GUN-101-TPM creates encrypted files that can only be decrypted on the machine that created them.
-Even with the correct password, decryption fails on any other machine because the encryption key
-is sealed inside the Trusted Platform Module (TPM 2.0) hardware.
+Traditional encryption protects data with a password alone. If that password leaks or is
+brute-forced, anyone can decrypt the file on any machine. What if the encrypted data should only
+be readable on the specific device that produced it?
+
+**GUN-101-TPM** solves this by binding encrypted files to the physical TPM 2.0 chip of the machine
+that created them. Even with the correct password, decryption fails on any other machine, because
+the encryption key is sealed inside the Trusted Platform Module (TPM 2.0) hardware and cannot be
+exported. This makes it ideal for protecting sensitive data on a single trusted device against
+password theft, key exfiltration, and offline decryption on attacker-owned hardware.
 
 ## Important Security Notes
 
@@ -85,6 +92,7 @@ gun101tpm decrypt secret.pdf.gun101
 
 ## Documentation
 
+- [Command-line and Python interface](docs/INTERFACE.md)
 - [Security Model](docs/SECURITY.md)
 - [Threat Model](docs/THREAT_MODEL.md)
 - [TPM Setup Guide](docs/TPM_SETUP.md)
@@ -95,4 +103,12 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Reporting Issues
 
-Please report security issues and bugs via the GitHub issue tracker.
+Please report reproducible bugs and enhancement requests via the [GitHub issue tracker](https://github.com/dialga-cmd/gun101-tpm/issues).
+For security vulnerabilities, do not open a public issue; follow the
+[private vulnerability reporting process](SECURITY_POLICY.md).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, coding
+standards, security-specific contribution requirements, testing expectations,
+and pull request guidance.

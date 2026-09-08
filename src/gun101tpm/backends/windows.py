@@ -7,10 +7,9 @@ ctypes bindings to Windows native tbs.dll.
 
 import ctypes
 import hashlib
-import platform
 import struct
 import sys
-from typing import Tuple, Optional
+from typing import Optional
 
 from .base import HardwareBackend
 
@@ -78,7 +77,6 @@ def _get_tbs_library():
     if sys.platform != "win32":
         return None
 
-    machine = platform.machine().upper()
     try:
         if hasattr(ctypes, "windll"):
             return ctypes.windll.tbs

@@ -5,18 +5,13 @@ Supports multiple hardware backends: Linux TPM 2.0, Windows TBS,
 and macOS Secure Enclave (stub).
 """
 
-from .config import (PROTOCOL, VERSION, DEK_LEN, AES_NONCE_LEN, ARGON2_TIME_COST,
-                     ARGON2_MEMORY_COST, ARGON2_PARALLELISM, SALT_LEN)
-from .backends import (check_tpm_available, get_tpm_fingerprint,
-                       seal_to_tpm, unseal_from_tpm,
-                       get_backend)
+from .config import PROTOCOL, VERSION, DEK_LEN, SALT_LEN
+from .backends import unseal_from_tpm, get_backend
 from .kdf import derive_key
 from .cipher import encrypt as aes_encrypt, decrypt as aes_decrypt
 import base64
 import json
-import hashlib
 import secrets
-import os
 
 
 def _clear_memory(data):
@@ -42,9 +37,10 @@ def encrypt_file(file_data: bytes, password: str) -> bytes:
     hardware binding method.
     """
     # Get the appropriate backend (auto-selects based on sys.platform)
+    # Validate inputs
+    # Get the appropriate backend (auto-selects based on sys.platform)
     backend = get_backend()
 
-    # Validate inputs
     if not password or not isinstance(password, str):
         raise ValueError("Password must be a non-empty string")
     if len(file_data) > (1 << 30):  # 1 GiB limit
@@ -110,9 +106,6 @@ def decrypt_file(encrypted_data: bytes, password: str) -> bytes:
     The password-derived KEK is presented as the hardware module's
     auth value, so both the password AND the hardware module are required.
     """
-    # Get the appropriate backend (auto-selects based on sys.platform)
-    backend = get_backend()
-
     # Validate inputs
     if not password or not isinstance(password, str):
         raise ValueError("Password must be a non-empty string")
@@ -128,9 +121,6 @@ def decrypt_file(encrypted_data: bytes, password: str) -> bytes:
         raise ValueError(f"Unsupported protocol: {container.get('protocol')}")
     if container.get("version") != VERSION:
         raise ValueError(f"Unsupported version: {container.get('version')}")
-
-    # Check the mode and handle accordingly
-    mode = container.get("mode", "Unknown")
 
     # Extract fields first (needed for both modes)
     try:

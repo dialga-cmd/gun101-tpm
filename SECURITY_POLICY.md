@@ -109,3 +109,21 @@ releasing an emergency fix and coordinate disclosure with the reporter
 accordingly. We aim to be transparent about what we have fixed, when, and what
 users should do (upgrade) — without releasing live exploit details before the
 fix is broadly available.
+
+## Automated Analysis and Testing
+
+Every push and pull request is checked by the GitHub Actions quality workflow.
+Ruff performs static source analysis, and Bandit checks the maintained Python
+package for common Python security weaknesses. Vendored generated files under
+`src/gun101tpm/build/` are excluded from Bandit because they are not project
+source and are not executed as part of the package.
+
+The same workflow runs the pytest suite as dynamic analysis. Pytest assertions
+remain enabled, and hardware-dependent tests skip cleanly when a TPM is not
+available. A release is expected to have passing static analysis and tests
+before publication.
+
+Medium- and high-severity findings confirmed by either analysis process are
+triaged as security issues. They are fixed or mitigated in a timely patch,
+documented in the changelog when user impact exists, and verified by a
+regression test where practical.

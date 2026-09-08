@@ -28,7 +28,7 @@ def main():
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # check-tpm command
-    parser_check = subparsers.add_parser(
+    subparsers.add_parser(
         "check-tpm", help="Check if a TPM 2.0 device is available"
     )
 

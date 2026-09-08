@@ -13,8 +13,6 @@ def main(page: ft.Page):
     page.padding = 20
     
     # Skeuomorphic Colors
-    COLOR_METAL_BASE = "#E5E7EB"
-    COLOR_METAL_DARK = "#9CA3AF"
     COLOR_LED_GREEN = "#10B981"
     COLOR_LED_RED = "#EF4444"
     COLOR_TEXT_EMBOSSED = "#374151"
@@ -35,16 +33,6 @@ def main(page: ft.Page):
 
     # State variables
     selected_file_path = None
-
-    def show_snack(message, color=COLOR_LED_GREEN):
-        page.snack_bar = ft.SnackBar(
-            content=ft.Text(message, color="#FFFFFF", weight=ft.FontWeight.W_600),
-            bgcolor=color,
-            behavior=ft.SnackBarBehavior.FLOATING,
-            shape=ft.RoundedRectangleBorder(radius=10)
-        )
-        page.snack_bar.open = True
-        page.update()
 
     # File Picker - Flet 0.86.5 API
     # No on_result parameter; use pick_files() async method instead
@@ -222,6 +210,7 @@ def main(page: ft.Page):
     )
 
     def route_change(route):
+        nonlocal selected_file_path
         page.views.clear()
         
         # HOME VIEW

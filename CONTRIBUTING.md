@@ -103,15 +103,12 @@ source venv/bin/activate   # on Windows: venv\Scripts\activate
 # Install the package in editable mode, including the TPM extra
 pip install -e .[tpm]
 
-# Install the test runner
-pip install pytest
+# Install test and static-analysis tools
+pip install -e .[dev]
 ```
 
-> **Note:** `pyproject.toml` currently declares the `tpm` extra
-> (`tpm2-pytss` on Linux) but does not yet declare a `dev` extra for test
-> and tooling dependencies. That is a deliberate gap and a small, very
-> welcome first PR: add a `[dev]` extra (e.g. `pytest`) to `pyproject.toml`
-> and update this section to use `pip install -e .[dev]`.
+The `dev` extra installs pytest, Ruff, and Bandit, which are also run by the
+repository's GitHub Actions quality workflow.
 
 ## Running the test suite
 
@@ -199,6 +196,10 @@ Additional rules:
 
 ## Writing new tests
 
+- **Every major new feature must include automated tests** covering its
+  normal behaviour and relevant failure cases. A pull request that changes
+  externally visible behaviour should add or update tests in `tests/` and
+  explain any hardware-dependent coverage that could not be run locally.
 - **Every new security-affecting function must have both a positive test**
   (it works correctly, e.g. a round-trip) **and a negative test** (it fails
   safely, e.g. wrong password, tampered ciphertext, corrupted sealed blob).

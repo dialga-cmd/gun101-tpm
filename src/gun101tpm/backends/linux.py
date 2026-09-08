@@ -32,7 +32,6 @@ def _make_tpm2b_sensitive_create(auth, data):
     TPM2B_SENSITIVE_CREATE only accepts _cdata positionally plus keyword args.
     We build it by creating the outer object and setting the inner sensitive fields.
     """
-    import tpm2_pytss
     from tpm2_pytss import types as tpm2_types
 
     sens_create = tpm2_types.TPM2B_SENSITIVE_CREATE()
@@ -51,7 +50,6 @@ def _make_keyed_hash_public_params():
     XOR/HMAC schemes only apply to objects that actually exercise decrypt/sign
     capability, which a pure sealed-data object does not have.
     """
-    import tpm2_pytss
     from tpm2_pytss import types as tpm2_types
     from tpm2_pytss import TPM2_ALG
 
@@ -115,7 +113,7 @@ class LinuxTPMBackend(HardwareBackend):
         _check_platform_supported()
         try:
             import tpm2_pytss
-            with tpm2_pytss.ESAPI() as esapi:
+            with tpm2_pytss.ESAPI():
                 return True
         except Exception:
             return False
