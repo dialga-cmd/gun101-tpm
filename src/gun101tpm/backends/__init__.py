@@ -31,7 +31,8 @@ def get_backend() -> HardwareBackend:
         raise RuntimeError(
             f"Unsupported platform: {sys.platform}. "
             "GUN-101-TPM supports Linux (TPM 2.0), Windows (TBS), "
-            "and macOS (Secure Enclave). See README.md for details."
+            "and macOS (Secure Enclave). "
+            "See README.md for details."
         )
     return _backend_instance
 

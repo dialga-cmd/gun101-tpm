@@ -2,10 +2,10 @@
 
 ## Platform Support
 
-**GUN-101-TPM is currently Linux-only.** TPM 2.0 hardware binding is not yet supported on Windows or macOS. This limitation is due to the tpm2-pytss library's reliance on Linux-specific kernel interfaces ( `/dev/tpm0`, `/dev/tpmrm0` ) and the kernel's TPM 2.0 device model.
+**GUN-101-TPM is currently Linux-first.** TPM 2.0 hardware binding is fully supported on Linux. Windows support is **work in progress** — a native TBS-based backend exists but its seal/unseal is still emulated and not yet provably hardware-bound. macOS is not yet supported.
 
 - **Linux**: Fully supported with `/dev/tpm0` or `/dev/tpmrm0`
-- **Windows**: Not supported — requires a native TBS-based backend (planned for future)
+- **Windows**: **Work in progress** — native TBS-backed backend (`tbs.dll`, x64/ARM64) with `check-tpm` and fingerprint support, but seal/unseal currently uses a software-emulated blob rather than genuine TPM binding
 - **macOS**: Not supported — most Mac hardware lacks TPM 2.0 chips; would require a Secure Enclave-based backend (planned for future)
 
 **Installation implications**:

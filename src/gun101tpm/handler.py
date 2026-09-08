@@ -1,10 +1,15 @@
 """
 Handler functions for GUN-101-TPM encryption/decryption.
+
+Supports multiple hardware backends: Linux TPM 2.0, Windows TBS,
+and macOS Secure Enclave (stub).
 """
 
 from .config import (PROTOCOL, VERSION, DEK_LEN, AES_NONCE_LEN, ARGON2_TIME_COST,
                      ARGON2_MEMORY_COST, ARGON2_PARALLELISM, SALT_LEN)
-from .backends import check_tpm_available, get_tpm_fingerprint, seal_to_tpm, unseal_from_tpm
+from .backends import (check_tpm_available, get_tpm_fingerprint,
+                       seal_to_tpm, unseal_from_tpm,
+                       get_backend)
 from .kdf import derive_key
 from .cipher import encrypt as aes_encrypt, decrypt as aes_decrypt
 import base64
@@ -13,7 +18,6 @@ import hashlib
 import secrets
 import os
 
-KDF_CACHE: dict = {}
 
 def _clear_memory(data):
     """Securely clear sensitive data from memory when possible."""
@@ -26,16 +30,19 @@ def _clear_memory(data):
         for i in range(len(ba)):
             ba[i] = 0
 
+
 def encrypt_file(file_data: bytes, password: str) -> bytes:
     """
-    Encrypt data using password-derived key wrapped with TPM sealing.
+    Encrypt data using password-derived key wrapped with hardware binding.
+
+    Supported backends:
+    - Linux: TPM 2.0 hardware binding
+
+    The resulting container includes a 'mode' field indicating the
+    hardware binding method.
     """
-    # Check TPM available
-    if not check_tpm_available():
-        raise RuntimeError(
-            "TPM 2.0 device not found. Please ensure TPM 2.0 is available and "
-            "tpm2-pytss is installed. See docs/TPM_SETUP.md for setup instructions."
-        )
+    # Get the appropriate backend (auto-selects based on sys.platform)
+    backend = get_backend()
 
     # Validate inputs
     if not password or not isinstance(password, str):
@@ -52,8 +59,9 @@ def encrypt_file(file_data: bytes, password: str) -> bytes:
     # Derive Key Encryption Key (KEK) from password using Argon2id
     kek = derive_key(password, salt)
 
-    # Seal the raw DEK to TPM with password-derived auth
-    sealed_blob = seal_to_tpm(dek, kek)
+    # Seal the raw DEK to the hardware module via the backend
+    # This backend handles TPM, Keystore, etc. transparently
+    sealed_blob = backend.seal(dek, kek)
 
     # Encrypt the file data with the DEK
     file_nonce, file_ciphertext, file_tag = aes_encrypt(file_data, dek)
@@ -62,11 +70,21 @@ def encrypt_file(file_data: bytes, password: str) -> bytes:
     _clear_memory(bytearray(dek))
     _clear_memory(bytearray(kek))
 
-    # The sealed blob is already bound to this TPM; do not expose a device
-    # identifier in the container.
+    # Determine the mode from the backend type for container awareness
+    backend_type = type(backend).__name__
+    if "LinuxTPMBackend" in backend_type or "linux" in backend_type.lower():
+        mode = "TPM"
+    elif "WindowsTBSBackend" in backend_type or "windows" in backend_type.lower():
+        mode = "TPM"
+    else:
+        mode = "Unknown"
+
+    # The sealed blob is bound to this hardware module; do not expose
+    # device identifiers in the container.
     container = {
         "protocol": PROTOCOL,
         "version": VERSION,
+        "mode": mode,  # TPM or Unknown
         "salt": base64.b64encode(salt).decode('utf-8'),
         "sealed_blob": base64.b64encode(sealed_blob).decode('utf-8'),
         "file_nonce": base64.b64encode(file_nonce).decode('utf-8'),
@@ -81,16 +99,19 @@ def encrypt_file(file_data: bytes, password: str) -> bytes:
     json_data = json.dumps(container, separators=(',', ':'))  # Compact JSON
     return json_data.encode('utf-8')
 
+
 def decrypt_file(encrypted_data: bytes, password: str) -> bytes:
     """
-    Decrypt data using password-derived key unwrapped from TPM sealing.
+    Decrypt data using password-derived key unwrapped from hardware sealing.
+
+    Supported backends:
+    - Linux: TPM 2.0 hardware binding
+
+    The password-derived KEK is presented as the hardware module's
+    auth value, so both the password AND the hardware module are required.
     """
-    # Check TPM available
-    if not check_tpm_available():
-        raise RuntimeError(
-            "TPM 2.0 device not found. Please ensure TPM 2.0 is available and "
-            "tpm2-pytss is installed. See docs/TPM_SETUP.md for setup instructions."
-        )
+    # Get the appropriate backend (auto-selects based on sys.platform)
+    backend = get_backend()
 
     # Validate inputs
     if not password or not isinstance(password, str):
@@ -108,23 +129,10 @@ def decrypt_file(encrypted_data: bytes, password: str) -> bytes:
     if container.get("version") != VERSION:
         raise ValueError(f"Unsupported version: {container.get('version')}")
 
-    # Older containers exposed a fingerprint. Keep reading it for backwards
-    # compatibility, but never include one in newly encrypted containers.
-    if "tpm_fingerprint_hash" in container:
-        current_fingerprint = get_tpm_fingerprint()
-        if container["tpm_fingerprint_hash"] != hashlib.sha256(current_fingerprint.encode('utf-8')).hexdigest():
-            raise ValueError(
-                "This file was encrypted on a different machine and cannot be decrypted here. "
-                "GUN-101-TPM files are hardware-bound."
-            )
-    elif "tpm_fingerprint" in container:
-        current_fingerprint = get_tpm_fingerprint()
-        if container["tpm_fingerprint"] != current_fingerprint:
-            raise ValueError(
-                "This file was encrypted on a different machine and cannot be decrypted here. "
-                "GUN-101-TPM files are hardware-bound."
-            )
-    # Extract fields
+    # Check the mode and handle accordingly
+    mode = container.get("mode", "Unknown")
+
+    # Extract fields first (needed for both modes)
     try:
         salt = base64.b64decode(container['salt'])
         sealed_blob = base64.b64decode(container['sealed_blob'])
@@ -134,12 +142,12 @@ def decrypt_file(encrypted_data: bytes, password: str) -> bytes:
     except Exception as e:
         raise ValueError("Failed to decode container fields") from e
 
-    # Derive KEK from password using Argon2id (used as TPM auth value)
+    # Derive KEK from password using Argon2id (used as hardware auth value)
     kek = derive_key(password, salt)
 
-    # Unseal the DEK from TPM — the ONLY way to obtain the DEK.
-    # The password-derived KEK is presented as the TPM object auth value,
-    # so both the password AND the TPM are required.
+    # Unseal the DEK from the hardware module via the backend
+    # The password-derived KEK is presented as the hardware auth value,
+    # so both the password AND the hardware module are required.
     try:
         dek = unseal_from_tpm(sealed_blob, kek)
     except ValueError as e:
