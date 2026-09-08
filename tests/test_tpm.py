@@ -23,6 +23,10 @@ from gun101tpm.handler import encrypt_file, decrypt_file
 from gun101tpm.backends import check_tpm_available, get_tpm_fingerprint
 from gun101tpm.config import PROTOCOL, VERSION
 
+pytestmark = pytest.mark.skipif(
+    os.environ.get('CI') == 'true' or not os.path.exists('/dev/tpm0'),
+    reason="TPM 2.0 hardware not available in CI environment"
+)
 
 def test_tpm_hardware_available():
     """Verify that a real TPM 2.0 device is present and accessible on Linux."""
