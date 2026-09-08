@@ -4,3 +4,14 @@ src/gun101_tpm.egg-info
 __pycache__/
 build/
 dist/
+
+# Local credentials and private key material
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+*.secret
+credentials.json
+secrets.json

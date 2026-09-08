@@ -14,6 +14,15 @@ here.
 This guide explains what we need help with, how to set up your environment,
 the standards we hold code to, and how to get your changes merged.
 
+All contributors must be legally authorized to submit their changes. Each
+commit in a pull request must include a `Signed-off-by` trailer (use
+`git commit -s`), certifying the Developer Certificate of Origin statement
+below. The DCO check must pass before a pull request can be merged.
+
+By adding the trailer, the contributor certifies that they have the right to
+submit the work under the project's license and agree to the Developer
+Certificate of Origin at https://developercertificate.org/.
+
 ---
 
 ## Table of Contents
@@ -222,6 +231,9 @@ Additional rules:
   the backend functions. Keep it working; don't delete it.
 - Never commit environment artifacts: `venv/`, `.idea/`, `.mypy_cache/`,
   `.pytest_cache/`, and `__pycache__/` are gitignored. Keep them that way.
+- Never commit credentials, private keys, certificates, environment files, or
+  generated release artifacts. Use GitHub Actions secrets or environment
+  protection instead of putting credentials in source files.
 
 ## Submitting a pull request
 

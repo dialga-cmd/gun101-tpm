@@ -5,6 +5,9 @@ on:
     types: [published]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build distribution 
@@ -20,10 +23,23 @@ jobs:
         
     - name: Install pypa/build
       run: >-
-        python3 -m pip install build --user
+        python3 -m pip install build pip-audit pip-licenses --user
+
+    - name: Audit release dependencies
+      run: |
+        python3 -m pip install -e . --user
+        pip-audit --strict
+        pip-licenses --format=plain | tee licenses.txt
+        if grep -Eq 'GPL|AGPL|SSPL' licenses.txt; then
+          echo "A disallowed copyleft dependency license was detected."
+          exit 1
+        fi
         
     - name: Build a binary wheel and a source tarball
       run: python3 -m build
+
+    - name: Create release checksum manifest
+      run: sha256sum dist/* > dist/SHA256SUMS.txt
       
     - name: Store the distribution packages
       uses: actions/upload-artifact@v4
@@ -38,14 +54,34 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read
+      contents: write
 
     steps:
+    - name: Set up Sigstore signing
+      uses: sigstore/cosign-installer@v3.7.0
+
+    - name: Validate release identifier
+      env:
+        RELEASE_TAG: ${{ github.ref_name }}
+      run: |
+        case "$RELEASE_TAG" in
+          v[0-9]*.[0-9]*.[0-9]*) ;;
+          *) echo "Unexpected release identifier: $RELEASE_TAG"; exit 1 ;;
+        esac
+
     - name: Download all the dists
       uses: actions/download-artifact@v4
       with:
         name: python-package-distributions
         path: dist/
+
+    - name: Sign release checksum manifest
+      run: cosign sign-blob --yes --bundle dist/SHA256SUMS.sigstore.json dist/SHA256SUMS.txt
+
+    - name: Upload signed release assets
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: gh release upload "$GITHUB_REF_NAME" dist/* --clobber
         
     - name: Publish distribution  to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1

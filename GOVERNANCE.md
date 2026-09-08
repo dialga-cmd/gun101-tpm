@@ -1,0 +1,25 @@
+# Project Governance and Access Roles
+
+## Maintainer
+
+**Aditya Raj** is the primary maintainer and release authority. The maintainer
+reviews code, approves security-sensitive changes, manages releases, and
+responds to private vulnerability reports.
+
+## Sensitive repository access
+
+Access to repository administration, branch protection, GitHub Actions release
+permissions, and PyPI trusted publishing is restricted to repository
+maintainers. The authoritative current membership and permission list is the
+repository's GitHub access page:
+
+https://github.com/dialga-cmd/gun101-tpm/settings/access
+
+Contributors receive only the permissions necessary for their work. Changes to
+the protected `main` branch require reviewed pull requests and passing CI.
+
+Before granting escalated access to repository administration, release
+publishing, branch protection, or other sensitive resources, the maintainer
+reviews the collaborator's identity, contribution history, intended duties,
+and least-privilege requirements. Permission changes are made manually in
+GitHub and recorded in the repository access history.

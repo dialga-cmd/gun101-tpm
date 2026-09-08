@@ -110,6 +110,14 @@ accordingly. We aim to be transparent about what we have fixed, when, and what
 users should do (upgrade) — without releasing live exploit details before the
 fix is broadly available.
 
+Public vulnerability records are maintained through GitHub Security Advisories
+and the project's changelog. After coordinated disclosure and a fixed release,
+the advisory records the affected versions, severity, remediation, and public
+references. Unresolved reports remain private until disclosure is safe.
+
+Public advisory archive:
+https://github.com/dialga-cmd/gun101-tpm/security/advisories
+
 ## Automated Analysis and Testing
 
 Every push and pull request is checked by the GitHub Actions quality workflow.
@@ -127,3 +135,10 @@ Medium- and high-severity findings confirmed by either analysis process are
 triaged as security issues. They are fixed or mitigated in a timely patch,
 documented in the changelog when user impact exists, and verified by a
 regression test where practical.
+
+Dependency SCA findings follow the thresholds in
+[docs/DEPENDENCIES.md](docs/DEPENDENCIES.md): critical and high findings block
+changes immediately, medium findings block the next release, and prohibited
+licenses block introduction. Bandit medium and high findings block changes;
+lower-severity findings require review and an explicit suppression rationale
+before merging.

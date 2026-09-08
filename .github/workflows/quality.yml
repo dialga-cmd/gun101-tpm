@@ -67,3 +67,29 @@ jobs:
 
       - name: Build wheel and source distribution
         run: python -m build --wheel --sdist
+
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install development tools
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+
+      - name: Audit dependencies for known vulnerabilities
+        run: pip-audit --strict
+
+      - name: Audit dependency licenses
+        run: |
+          pip-licenses --format=plain | tee licenses.txt
+          if grep -Eq 'GPL|AGPL|SSPL' licenses.txt; then
+            echo "A disallowed copyleft dependency license was detected."
+            exit 1
+          fi

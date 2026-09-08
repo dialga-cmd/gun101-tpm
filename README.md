@@ -1,6 +1,7 @@
 # GUN-101-TPM: Hardware-bound File Encryption
 
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14547/badge)](https://www.bestpractices.dev/projects/14547)
+[![OpenSSF Baseline](https://www.bestpractices.dev/projects/14547/baseline)](https://www.bestpractices.dev/projects/14547)
 
 ## Platform Support
 
@@ -93,9 +94,17 @@ gun101tpm decrypt secret.pdf.gun101
 ## Documentation
 
 - [Command-line and Python interface](docs/INTERFACE.md)
+- [Build Guide](docs/BUILD.md)
+- [Dependency Policy](docs/DEPENDENCIES.md)
+- [Release Verification](docs/RELEASE_VERIFICATION.md)
+- [Secrets Policy](docs/SECRETS.md)
+- [System Design](docs/DESIGN.md)
+- [Governance and Access Roles](GOVERNANCE.md)
+- [Security Assessment](docs/SECURITY_ASSESSMENT.md)
 - [Security Model](docs/SECURITY.md)
 - [Threat Model](docs/THREAT_MODEL.md)
 - [TPM Setup Guide](docs/TPM_SETUP.md)
+- [Vulnerability Exploitability (VEX) Policy](docs/VEX.md)
 
 ## License
 
