@@ -19,12 +19,16 @@ the `dev` extra.
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --upgrade pip build
-python -m build --wheel --sdist
+SOURCE_DATE_EPOCH=1720000000 python scripts/build_reproducible.py
 ```
 
 The resulting wheel and source archive are written to `dist/`. The same build
 command runs in the GitHub Actions quality workflow and the PyPI publishing
 workflow.
+
+`SOURCE_DATE_EPOCH` fixes the release timestamp, and the build helper
+canonicalizes source-archive metadata. Repeating the command with the same
+source and timestamp produces byte-identical wheel and source archives.
 
 ## Install for development
 

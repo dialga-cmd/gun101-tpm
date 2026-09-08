@@ -48,3 +48,6 @@ omit = [
     "src/gun101tpm/main.py",
     "src/gun101tpm/backends/windows.py",
 ]
+
+[tool.coverage.report]
+fail_under = 90

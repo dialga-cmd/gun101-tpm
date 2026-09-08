@@ -49,6 +49,9 @@ https://github.com/dialga-cmd/gun101-tpm/blob/main/docs/DESIGN.md
 - Static analysis uses Ruff and Bandit; dependency analysis uses `pip-audit`.
 - Automated tests include positive and negative paths and enforce 80% statement
   coverage for portable production code.
+- Release publication is gated on the same dynamic test suite with Python
+  assertions enabled. Security-critical runtime checks use explicit exceptions
+  rather than relying on assertions that optimized Python could remove.
 - Release assets have SHA-256 manifests and Sigstore verification instructions.
 
 ## Residual risks

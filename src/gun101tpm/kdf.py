@@ -1,3 +1,5 @@
+# Copyright (c) 2026 GUN-101-TPM contributors
+# SPDX-License-Identifier: MIT
 """
 Key Derivation Function using Argon2id for GUN-101-TPM.
 """

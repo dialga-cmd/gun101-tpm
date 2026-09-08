@@ -241,6 +241,27 @@ Additional rules:
 
 ## Submitting a pull request
 
+## Code review standards
+
+Every code change must be proposed through a pull request. A reviewer other
+than the author must determine that the change is worthwhile, correctly scoped,
+compatible with the supported Python versions, covered by appropriate tests,
+and free of known issues that should block release.
+
+Reviewers must check, as applicable:
+
+- correctness, error handling, input validation, and public API compatibility;
+- tests for new behavior and regression tests for fixed defects;
+- type hints, docstrings, Ruff results, and Bandit results;
+- dependency, license, and supply-chain changes;
+- cryptographic invariants, threat-model impact, and key-handling behavior;
+- documentation, changelog, migration, and release-note updates; and
+- CI status, DCO status, and required approvals.
+
+Security-sensitive changes require a written cryptographic justification and a
+reviewer who is not the author. Release changes require review before the
+release is published. Maintainers must not approve their own pull request.
+
 ### Branch naming
 
 Name your branch after the kind of change and its topic:
@@ -357,10 +378,10 @@ ask questions in the issue thread, and open a PR when you're ready.
    `get_tpm_fingerprint()` would let contributors without a physical TPM
    validate backend changes in CI.
 
-6. **Add a `[dev]` extra to `pyproject.toml`.**
-   Declare test/tooling dependencies (at minimum `pytest`) so contributors
-   can `pip install -e .[dev]`, then update the setup section of this file
-   to match.
+6. **Add CLI error-path tests.**
+  Extend `tests/test_unit.py` with portable tests for unreadable input files,
+  encryption/decryption failures, invalid output paths, and TPM diagnostic
+  errors. Keep the tests hardware-independent by mocking backend calls.
 
 Something else on your mind that isn't listed? Open an issue describing the
 change and the reasoning behind it before writing the code — a quick

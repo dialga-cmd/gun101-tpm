@@ -1,3 +1,6 @@
+# Copyright (c) 2026 GUN-101-TPM contributors
+# SPDX-License-Identifier: MIT
+
 PROTOCOL = "GUN-101-TPM"
 VERSION = "2.0"
 DEFAULT_CIPHER = "AES-256-GCM"

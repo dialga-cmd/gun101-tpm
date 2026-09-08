@@ -48,7 +48,7 @@ jobs:
       - name: Run tests with assertions enabled
         env:
           PYTHONOPTIMIZE: ""
-        run: python -m pytest tests/ -q --cov=src/gun101tpm --cov-report=term-missing --cov-fail-under=80
+        run: python -m pytest tests/ -q --cov=src/gun101tpm --cov-branch --cov-report=term-missing --cov-fail-under=90
 
   build:
     name: Build distributions
@@ -66,7 +66,9 @@ jobs:
         run: python -m pip install --upgrade pip build
 
       - name: Build wheel and source distribution
-        run: python -m build --wheel --sdist
+        env:
+          SOURCE_DATE_EPOCH: "1720000000"
+        run: python scripts/build_reproducible.py
 
   dependency-audit:
     name: Dependency audit

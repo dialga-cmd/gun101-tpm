@@ -15,6 +15,19 @@ repository's GitHub access page:
 
 https://github.com/dialga-cmd/gun101-tpm/settings/access
 
+## Multi-factor authentication
+
+All maintainers and collaborators with sensitive repository, release, or
+security-report access must use GitHub two-factor authentication with a
+cryptographic security key or passkey, or an authenticator application using
+TOTP. SMS-only authentication is not sufficient for sensitive project access.
+
+Repository owners must enable GitHub's organization or repository access
+controls requiring two-factor authentication and periodically review account
+security settings:
+
+https://github.com/settings/security
+
 Contributors receive only the permissions necessary for their work. Changes to
 the protected `main` branch require reviewed pull requests and passing CI.
 

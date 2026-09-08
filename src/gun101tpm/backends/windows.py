@@ -1,3 +1,5 @@
+# Copyright (c) 2026 GUN-101-TPM contributors
+# SPDX-License-Identifier: MIT
 """
 Windows TBS (TPM Base Services) backend for GUN-101-TPM.
 

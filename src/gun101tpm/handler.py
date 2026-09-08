@@ -1,3 +1,5 @@
+# Copyright (c) 2026 GUN-101-TPM contributors
+# SPDX-License-Identifier: MIT
 """
 Handler functions for GUN-101-TPM encryption/decryption.
 

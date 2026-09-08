@@ -1,5 +1,9 @@
+# Copyright (c) 2026 GUN-101-TPM contributors
+# SPDX-License-Identifier: MIT
+
 """Portable unit tests for cryptography, handlers, and the CLI."""
 
+import base64
 import json
 import sys
 
@@ -23,6 +27,8 @@ def test_cipher_roundtrip_and_validation():
         cipher.encrypt(b"payload", b"short")
     with pytest.raises(ValueError, match="Unsupported cipher"):
         cipher.encrypt(b"payload", key, "unknown")
+    with pytest.raises(ValueError, match="Unsupported cipher"):
+        cipher.decrypt(nonce, ciphertext, tag, key, "unknown")
     with pytest.raises(ValueError, match="Nonce"):
         cipher.decrypt(b"short", ciphertext, tag, key)
     with pytest.raises(ValueError, match="Tag"):
@@ -171,3 +177,149 @@ def test_cli_default_outputs_and_overwrite_refusal(tmp_path, monkeypatch):
     )
     cli.main()
     assert source.read_bytes() == b"recovered"
+
+
+def test_cli_password_prompt_and_tpm_errors(monkeypatch):
+    monkeypatch.delenv("GUN101TPM_PASSWORD", raising=False)
+    monkeypatch.setattr(cli.getpass, "getpass", lambda _: "prompted")
+    assert cli.get_password() == "prompted"
+
+    monkeypatch.setattr(cli, "check_tpm_available", lambda: True)
+    monkeypatch.setattr(cli, "get_tpm_fingerprint", lambda: (_ for _ in ()).throw(RuntimeError("fingerprint")))
+    monkeypatch.setattr(sys, "argv", ["gun101tpm", "check-tpm"])
+    with pytest.raises(SystemExit):
+        cli.main()
+
+    monkeypatch.setattr(cli, "check_tpm_available", lambda: (_ for _ in ()).throw(RuntimeError("TPM")))
+    with pytest.raises(SystemExit):
+        cli.main()
+
+
+def test_cli_io_and_operation_errors(tmp_path, monkeypatch):
+    source = tmp_path / "source.txt"
+    source.write_bytes(b"input")
+    monkeypatch.setenv("GUN101TPM_PASSWORD", "password")
+    real_open = open
+
+    def fail_read(path, mode="r", *args, **kwargs):
+        if "r" in mode:
+            raise OSError("read failure")
+        return real_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.open", fail_read)
+    monkeypatch.setattr(sys, "argv", ["gun101tpm", "encrypt", str(source)])
+    with pytest.raises(SystemExit):
+        cli.main()
+
+    monkeypatch.setattr(cli, "encrypt_file", lambda *_: b"sealed")
+
+    def fail_write(path, mode="r", *args, **kwargs):
+        if "w" in mode:
+            raise OSError("write failure")
+        return real_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.open", fail_write)
+    monkeypatch.setattr(sys, "argv", ["gun101tpm", "encrypt", str(source)])
+    with pytest.raises(SystemExit):
+        cli.main()
+
+    monkeypatch.setattr("builtins.open", real_open)
+    monkeypatch.setattr(sys, "argv", ["gun101tpm", "decrypt", str(tmp_path / "missing")])
+    with pytest.raises(SystemExit):
+        cli.main()
+
+    monkeypatch.setattr(cli, "decrypt_file", lambda *_: b"recovered")
+    non_suffix = tmp_path / "encrypted.bin"
+    non_suffix.write_bytes(b"sealed")
+    monkeypatch.setattr(sys, "argv", ["gun101tpm", "decrypt", str(non_suffix)])
+    cli.main()
+    assert (tmp_path / "encrypted.bin.decrypted").read_bytes() == b"recovered"
+
+    monkeypatch.setattr("builtins.open", fail_read)
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+    with pytest.raises(SystemExit):
+        cli.main()
+    monkeypatch.setattr("builtins.open", real_open)
+
+    monkeypatch.setattr(cli, "decrypt_file", lambda *_: (_ for _ in ()).throw(ValueError("decrypt")))
+    with pytest.raises(SystemExit):
+        cli.main()
+
+    monkeypatch.setattr("builtins.open", fail_write)
+    monkeypatch.setattr(cli, "decrypt_file", lambda *_: b"recovered")
+    with pytest.raises(SystemExit):
+        cli.main()
+
+    monkeypatch.setattr("builtins.open", real_open)
+    monkeypatch.setattr(cli, "encrypt_file", lambda *_: (_ for _ in ()).throw(ValueError("encrypt")))
+    monkeypatch.setattr(sys, "argv", ["gun101tpm", "encrypt", str(source)])
+    with pytest.raises(SystemExit):
+        cli.main()
+
+
+def test_handler_validation_and_cleanup(monkeypatch):
+    class FakeBackend:
+        def seal(self, secret, password_auth):
+            return b"sealed"
+
+    monkeypatch.setattr(handler, "get_backend", lambda: FakeBackend())
+    with pytest.raises(ValueError, match="File data"):
+        handler.encrypt_file("text", "password")
+    with pytest.raises(ValueError, match="Password"):
+        handler.encrypt_file(b"data", "")
+    with pytest.raises(ValueError, match="Unsupported cipher"):
+        handler.encrypt_file(b"data", "password", "unknown")
+    monkeypatch.setattr(handler, "_clear_memory", lambda data: None)
+    with pytest.raises(ValueError, match="File too large"):
+        handler.encrypt_file(b"x" * ((1 << 30) + 1), "password")
+    assert handler._clear_memory(b"bytes") is None
+    assert handler._clear_memory(bytearray(b"bytes")) is None
+
+
+def test_handler_unseal_and_cipher_failures(monkeypatch):
+    container = {
+        "protocol": "GUN-101-TPM",
+        "version": "2.0",
+        "salt": base64.b64encode(b"s" * 16).decode(),
+        "sealed_blob": "c2VhbGVk",
+        "file_nonce": "bm9uY2U=",
+        "file_tag": "dGFn",
+        "ciphertext": "Y2lwaGVy",
+    }
+    monkeypatch.setattr(handler, "unseal_from_tpm", lambda *_: (_ for _ in ()).throw(ValueError("unseal")))
+    with pytest.raises(ValueError, match="TPM unseal failed"):
+        handler.decrypt_file(json.dumps(container).encode(), "password")
+
+    monkeypatch.setattr(handler, "unseal_from_tpm", lambda *_: b"k" * 32)
+    monkeypatch.setattr(handler, "aes_decrypt", lambda *_: (_ for _ in ()).throw(ValueError("cipher")))
+    with pytest.raises(ValueError, match="Decryption failed"):
+        handler.decrypt_file(json.dumps(container).encode(), "password")
+
+
+def test_handler_rejects_protocol_fields(monkeypatch):
+    base = {
+        "protocol": "GUN-101-TPM",
+        "version": "2.0",
+        "salt": base64.b64encode(b"s" * 16).decode(),
+        "sealed_blob": "c2VhbGVk",
+        "file_nonce": "bm9uY2U=",
+        "file_tag": "dGFn",
+        "ciphertext": "Y2lwaGVy",
+    }
+    for field, value, message in (
+        ("version", "1.0", "Unsupported version"),
+        ("cipher", "unknown", "Unsupported cipher"),
+        ("sealed_blob", 42, "Failed to decode"),
+        ("sealed_blob", "", "Failed to decode"),
+    ):
+        candidate = dict(base)
+        candidate[field] = value
+        with pytest.raises(ValueError, match=message):
+            handler.decrypt_file(json.dumps(candidate).encode(), "password")
+
+    with pytest.raises(ValueError, match="Invalid container format"):
+        handler.decrypt_file(json.dumps([]).encode(), "password")
+
+
+def test_kdf_verification_handles_invalid_input():
+    assert not kdf.verify_key("password", b"bad", b"expected")

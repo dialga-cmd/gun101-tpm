@@ -31,6 +31,8 @@ objects, release artifacts, and CI credentials.
   `tpm2-pytss`; no primitives are implemented from scratch.
 - Ruff, Bandit, pytest, and reproducible wheel/sdist builds run in GitHub
   Actions on every push and pull request.
+- The release workflow reruns pytest with `PYTHONOPTIMIZE` cleared and requires
+  the coverage threshold before building or publishing artifacts.
 - Security reports use private disclosure, and public advisories are created
   after coordinated remediation.
 

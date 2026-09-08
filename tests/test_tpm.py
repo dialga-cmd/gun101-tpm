@@ -1,3 +1,6 @@
+# Copyright (c) 2026 GUN-101-TPM contributors
+# SPDX-License-Identifier: MIT
+
 """
 Real, un-mocked integration tests for GUN-101-TPM operations (Linux TPM 2.0).
 

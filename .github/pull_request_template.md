@@ -38,3 +38,9 @@ This library seals decryption keys inside TPM 2.0 hardware. Please read
 
 <!-- Paste the relevant portion of `pytest tests/ -v` output, or explain
   clearly which hardware-dependent tests you could not run. -->
+
+## Review readiness
+
+- [ ] I have requested review from someone other than the author.
+- [ ] CI, static analysis, dependency audit, and required coverage checks pass.
+- [ ] Documentation, changelog, and migration notes are updated when needed.
