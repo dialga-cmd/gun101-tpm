@@ -323,3 +323,23 @@ def test_handler_rejects_protocol_fields(monkeypatch):
 
 def test_kdf_verification_handles_invalid_input():
     assert not kdf.verify_key("password", b"bad", b"expected")
+
+
+def test_kdf_retries_when_first_result_has_wrong_length(monkeypatch):
+    class FakeHasher:
+        calls = 0
+
+        def __init__(self, **_kwargs):
+            pass
+
+        def hash(self, _password, salt):
+            FakeHasher.calls += 1
+            if FakeHasher.calls == 1:
+                return "$argon2id$v=19$invalid$eA=="
+            encoded = base64.b64encode(b"k" * 32).decode()
+            return f"$argon2id$v=19$valid${encoded}"
+
+    monkeypatch.setattr(kdf.argon2, "PasswordHasher", FakeHasher)
+
+    assert kdf.derive_key("password", b"s" * 16) == b"k" * 32
+    assert FakeHasher.calls == 2
