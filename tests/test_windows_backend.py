@@ -17,6 +17,14 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 import pytest
 from gun101tpm.backends.windows import WindowsTBSBackend
 
+_backend = WindowsTBSBackend()
+_tpm_available = sys.platform == "win32" and _backend.check_available()
+
+pytestmark = pytest.mark.skipif(
+    os.environ.get("CI") == "true" or not _tpm_available,
+    reason="TPM 2.0 hardware not available via Windows TBS",
+)
+
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows TBS real tests require running natively on Windows OS.")
 def test_windows_real_tpm_available():
