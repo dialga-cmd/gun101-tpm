@@ -2,6 +2,15 @@
 
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14547/badge)](https://www.bestpractices.dev/projects/14547)
 [![OpenSSF Baseline](https://www.bestpractices.dev/projects/14547/baseline)](https://www.bestpractices.dev/projects/14547)
+[![PyPI version](https://img.shields.io/pypi/v/gun101-tpm.svg)](https://pypi.org/project/gun101-tpm/)
+[![Python versions](https://img.shields.io/pypi/pyversions/gun101-tpm.svg)](https://pypi.org/project/gun101-tpm/)
+[![License: MIT](https://img.shields.io/pypi/l/gun101-tpm.svg)](LICENSE)
+[![Code quality](https://github.com/dialga-cmd/gun101-tpm/actions/workflows/quality.yml/badge.svg)](https://github.com/dialga-cmd/gun101-tpm/actions/workflows/quality.yml)
+
+[![Crypto: Argon2id](https://img.shields.io/badge/KDF-Argon2id-blue.svg)](https://github.com/dialga-cmd/gun101-tpm/blob/main/src/gun101tpm/kdf.py)
+[![Cipher: AES-256-GCM](https://img.shields.io/badge/Cipher-AES--256--GCM-blue.svg)](https://github.com/dialga-cmd/gun101-tpm/blob/main/src/gun101tpm/cipher.py)
+[![Hardware: TPM 2.0](https://img.shields.io/badge/Binding-TPM%202.0-purple.svg)](https://github.com/dialga-cmd/gun101-tpm/blob/main/src/gun101tpm/backends/linux.py)
+[![Platform: Linux](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20WIP-informational.svg)](#platform-support)
 
 ## Platform Support
 
