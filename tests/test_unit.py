@@ -359,19 +359,15 @@ def test_handler_encrypt_backend_modes(monkeypatch):
         def seal(self, secret, auth):
             return b"linux_sealed"
 
-    class WindowsMockBackend:
-        def seal(self, secret, auth):
-            return b"windows_sealed"
-
     monkeypatch.setattr(handler, "get_backend", lambda: LinuxMockBackend())
     linux_enc = handler.encrypt_file(b"data", "password")
     linux_container = json.loads(linux_enc)
     assert linux_container["mode"] == "TPM"
 
-    monkeypatch.setattr(handler, "get_backend", lambda: WindowsMockBackend())
-    win_enc = handler.encrypt_file(b"data", "password")
-    win_container = json.loads(win_enc)
-    assert win_container["mode"] == "TPM"
+    # NOTE: deliberately no Windows case here. WindowsTBSBackend.seal() is a
+    # software stub that stores the DEK in the blob in plaintext, so asserting
+    # mode == "TPM" for it would lock in a container that falsely advertises
+    # hardware binding. Cover the Windows path once it is genuinely TPM-backed.
 
 
 def test_handler_empty_and_invalid_data_inputs(monkeypatch):
