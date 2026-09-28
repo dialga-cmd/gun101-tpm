@@ -19,6 +19,13 @@ branch but have not yet been released.
 
 ### Changed
 
+- Package version bumped to `1.1.0` (was `1.0.0`).
+- **Container version is independent of the package version.** The `VERSION`
+  constant in `src/gun101tpm/config.py` is the on-disk container format version
+  and is currently `2.0`; the package version in `pyproject.toml` is `1.1.0`.
+  `decrypt_file()` enforces strict equality on the container version, so
+  changing it is a breaking change for existing `.gun101` files and is not
+  tied to package releases.
 - `handler.encrypt_file()` and `handler.decrypt_file()` now route through the
   `get_backend()` backend registry and delegate sealing/unsealing to the
   active platform backend instead of hard-coding TPM calls.
