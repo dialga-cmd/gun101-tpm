@@ -49,7 +49,8 @@ jobs:
     - name: Audit release dependencies
       run: |
         python3 -m pip install -e . --user
-        pip-audit --strict
+        pip freeze --exclude-editable > "$RUNNER_TEMP/requirements.txt"
+        pip-audit --strict -r "$RUNNER_TEMP/requirements.txt"
         pip-licenses --format=plain | tee licenses.txt
         if grep -Eq 'GPL|AGPL|SSPL' licenses.txt; then
           echo "A disallowed copyleft dependency license was detected."
