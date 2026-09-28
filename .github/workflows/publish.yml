@@ -113,6 +113,12 @@ jobs:
         GH_REPO: ${{ github.repository }}
         RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
       run: gh release upload "$RELEASE_TAG" dist/* --clobber
+
+    - name: Move release assets out of the publish directory
+      run: |
+        mkdir -p "$RUNNER_TEMP/release-assets"
+        mv dist/SHA256SUMS.txt dist/SHA256SUMS.sigstore.json "$RUNNER_TEMP/release-assets/"
+        ls -l dist/
         
     - name: Publish distribution  to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
